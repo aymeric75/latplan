@@ -9,11 +9,7 @@
 #SBATCH --time=60
 #SBATCH --mem=32G
 
+# module load profile/deeplrn
+# module load autoload cineca-ai
 
-# !./train_kltune.py learn_summary_plot_dump puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Plus
-
-# ! ./train_kltune.py reproduce puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Plus
-
-./train_kltune.py reproduce puzzle mnist 3 3 5000 ConcreteDetNormalizedLogitAddEffectTransitionAE
-
-# !CubeSpaceAE_AMA4Conv
+./train_kltune.py learn puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Conv

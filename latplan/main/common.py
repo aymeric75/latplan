@@ -1,12 +1,14 @@
 import os
 import os.path
 import glob
-
+import hashlib
 import numpy as np
 import latplan.model
 import latplan.util.stacktrace
 from latplan.util.tuning import simple_genetic_search, parameters, nn_task, reproduce, load_history
 from latplan.util        import curry
+#from ../util import ensure_list, NpEncoder, gpu_info
+
 
 ################################################################
 # globals
@@ -100,16 +102,19 @@ def add_common_arguments(subparser,task,objs=False):
 
 
 def main(parameters={}):
+    print("22")
     import latplan.util.tuning
     latplan.util.tuning.parameters.update(parameters)
-
+    print("33")
     import sys
     global args, sae_path
     args = parser.parse_args()
+    print("44")
     task = args.task
     delattr(args,"task")
     print(vars(args))
     latplan.util.tuning.parameters.update(vars(args))
+    print("55")
     sae_path = "_".join(sys.argv[2:])
     try:
         task(args)
@@ -202,6 +207,32 @@ def train_val_test_split(x):
     test  = x[int(len(x)*0.95):]
     return train, val, test
 
+keys_to_ignore = ["time_start","time_duration","time_end","HOSTNAME","LSB_JOBID","gpu","mean","std","hash"]
+
+
+def _key(config):
+    def tuplize(x):
+        if isinstance(x,list):
+            return tuple([tuplize(y) for y in x])
+        else:
+            return x
+    return tuple( tuplize(v) for k, v in sorted(config.items())
+                  if k not in keys_to_ignore)
+
+def _add_misc_info(config):
+    for key in ["HOSTNAME", "LSB_JOBID"]:
+        try:
+            config[key] = os.environ[key]
+        except KeyError:
+            pass
+    # try:
+    #     config["gpu"] = gpu_info()[0]["name"]
+    # except:
+    #     # not very important
+    #     pass
+    config["hash"] = hashlib.md5(bytes(str(_key(config)),"utf-8")).hexdigest()
+    return
+
 
 def run(path,transitions,extra=None):
     train, val, test = train_val_test_split(transitions)
@@ -225,17 +256,60 @@ def run(path,transitions,extra=None):
 
 
     if 'learn' in args.mode:
-        simple_genetic_search(
-            curry(nn_task, latplan.model.get(parameters["aeclass"]),
-                  path,
-                  train, train, val, val), # noise data is used for tuning metric
-            parameters,
-            path,
-            limit              = 100,
-            initial_population = 100,
-            population         = 100,
-            report             = report,
-        )
+        print("66")
+
+        print("parametersssSSSSSSSSSSSSSSSSSSSSSSSS")
+
+        print(parameters)
+
+        parameters['batch_size'] = 400
+        parameters['N'] = 300
+        parameters['beta_d'] = 10
+        parameters['beta_z'] = 10
+        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
+        parameters['aae_activation'] = 'relu' # see 9.2
+
+        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
+
+        parameters['max_temperature'] = 5.0
+
+        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
+
+        parameters['conv_pooling'] = 1 # = train_common.py
+
+        parameters['conv_kernel'] = 5 # = train_common.py
+
+        parameters['conv_per_pooling']  = 1
+
+        parameters['conv_channel']  = 32
+        parameters['conv_channel_increment'] = 1
+
+        parameters['eff_regularizer'] = None
+
+        parameters['A'] = 6000
+
+        task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+
+        _add_misc_info(parameters)
+
+
+        task(parameters)
+
+        exit()
+
+        # simple_genetic_search(
+        #     curry(nn_task, latplan.model.get(parameters["aeclass"]),
+        #           path,
+        #           train, train, val, val), # noise data is used for tuning metric
+        #     parameters,
+        #     path,
+        #     limit              = 100,
+        #     initial_population = 100,
+        #     population         = 100,
+        #     report             = report,
+        # )
+
+
 
     if 'resume' in args.mode:
         simple_genetic_search(

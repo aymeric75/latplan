@@ -232,6 +232,7 @@ def grid_search(task, parameters, path,
         _add_misc_info(config)
         def fn1():
             open_list, close_list = load_history(path)
+       
             if _key(config) in close_list:
                 raise HyperparameterGenerationError()
             else:
@@ -478,6 +479,8 @@ def simple_genetic_search(task, parameters, path,
     "Initialize a queue by evaluating N nodes. Select 2 parents randomly from top N nodes and perform uniform crossover. Fall back to LGBFS on a fixed ratio (as a mutation)."
     parameters = _ensure_hyperparameters_list(parameters)
 
+    print("HERREEEEE")
+
     # assert 2 <= initial_population
     # if not (2 <= initial_population):
     #     print({"initial_population":initial_population},"is superceded by",{"initial_population":2},". initial_population must be larger than equal to 2",)
@@ -498,7 +501,21 @@ def simple_genetic_search(task, parameters, path,
     def _iter(config):
         _add_misc_info(config)
         def fn1():
+            #print(path)
             open_list, close_list = load_history(path)
+          
+
+            # print("close_list")
+            # print(close_list)
+
+            print("config")
+            print(config)
+
+            exit()
+
+            # print("_key(config)")
+            # print(_key(config))
+
             if _key(config) in close_list:
                 raise HyperparameterGenerationError()
             else:
@@ -524,11 +541,17 @@ def simple_genetic_search(task, parameters, path,
 
         max_trials = 100
         gen_config = _random_configs(parameters)
+
+
         while _runs(open_list) <= initial_population:
             done = False
+            print("in while")
             for _, config in zip(range(max_trials),gen_config):
+
                 try:
+                    print("before _iter")
                     open_list, close_list = _iter(config)
+                    print("after _iter")
                     return
                 except ResourceExhaustedError as e:
                     open_list, close_list = call_with_lock(path,lambda : save_history(path, (float("inf"), config, "oom")))
