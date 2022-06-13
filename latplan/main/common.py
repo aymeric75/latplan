@@ -112,7 +112,6 @@ def main(parameters={}):
     print("44")
     task = args.task
     delattr(args,"task")
-    print(vars(args))
     latplan.util.tuning.parameters.update(vars(args))
     print("55")
     sae_path = "_".join(sys.argv[2:])
@@ -256,11 +255,8 @@ def run(path,transitions,extra=None):
 
 
     if 'learn' in args.mode:
-        print("66")
 
-        print("parametersssSSSSSSSSSSSSSSSSSSSSSSSS")
 
-        print(parameters)
 
         parameters['batch_size'] = 400
         parameters['N'] = 300
@@ -286,16 +282,14 @@ def run(path,transitions,extra=None):
 
         parameters['eff_regularizer'] = None
 
-        parameters['A'] = 6000
+        parameters['A'] = 6000 # max # of actions
 
         task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
 
         _add_misc_info(parameters)
 
-
         task(parameters)
 
-        exit()
 
         # simple_genetic_search(
         #     curry(nn_task, latplan.model.get(parameters["aeclass"]),
@@ -308,6 +302,43 @@ def run(path,transitions,extra=None):
         #     population         = 100,
         #     report             = report,
         # )
+
+
+
+    if 'testing' in args.mode: # aymeric [13/06/2022]
+
+
+
+        parameters['batch_size'] = 400
+        parameters['N'] = 300
+        parameters['beta_d'] = 10
+        parameters['beta_z'] = 10
+        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
+        parameters['aae_activation'] = 'relu' # see 9.2
+
+        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
+
+        parameters['max_temperature'] = 5.0
+
+        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
+
+        parameters['conv_pooling'] = 1 # = train_common.py
+
+        parameters['conv_kernel'] = 5 # = train_common.py
+
+        parameters['conv_per_pooling']  = 1
+
+        parameters['conv_channel']  = 32
+        parameters['conv_channel_increment'] = 1
+
+        parameters['eff_regularizer'] = None
+
+        parameters['A'] = 6000 # max # of actions
+
+
+        print(latplan.model.get(parameters["aeclass"]))
+        print(type(latplan.model.get(parameters["aeclass"])))
+
 
 
 

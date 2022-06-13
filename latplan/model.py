@@ -1042,6 +1042,7 @@ class NormalizedLogitAddBidirectionalMixin(NormalizedLogitAddPreconditionMixin, 
 
 class UnidirectionalMixin(AddHocPreconditionMixin, EffectMixin):
     def plot_transitions(self,data,path,verbose=False,epoch=None):
+        print("plot_transitions 1")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext
@@ -1108,6 +1109,7 @@ class UnidirectionalMixin(AddHocPreconditionMixin, EffectMixin):
 
 class BidirectionalMixin(PreconditionMixin, EffectMixin):
     def plot_transitions(self,data,path,verbose=False,epoch=None):
+        print("plot_transitions 2")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext

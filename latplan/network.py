@@ -10,6 +10,7 @@ from .util           import ensure_list, NpEncoder, curry
 from .util.tuning    import InvalidHyperparameterError
 from .util.layers    import LinearSchedule
 import os.path
+import time
 
 # modified version
 import progressbar
@@ -152,6 +153,7 @@ into a full path."""
         return os.path.join(self.path,path)
 
     def save(self,path=""):
+        print("in save !!!!")
         """An interface for saving a network.
 Users should not overload this method; Define _save() for each subclass instead.
 This function calls _save bottom-up from the least specialized class.
@@ -168,11 +170,16 @@ Users may define a method for each subclass for adding a new save-time feature.
 Each method should call the _save() method of the superclass in turn.
 Users are not expected to call this method directly. Call save() instead.
 Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
+        
+
         for i, net in enumerate(self.nets):
             net.save_weights(self.local(os.path.join(path,f"net{i}.h5")))
 
         for i, o in enumerate(self.optimizers):
             np.savez_compressed(self.local(os.path.join(path,f"opt{i}.npz")),*o.get_weights())
+
+
+
 
         with open(self.local(os.path.join(path,"aux.json")), "w") as f:
             json.dump({"parameters":self.parameters,
@@ -192,16 +199,20 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         if allow_failure:
             try:
                 print("Loading networks from {} (with failure allowed)".format(self.local(path)))
-                self._load(path)
+               
+
+                self._load2(self.local(path))
+                #self._load(self.local(path))
                 self.loaded = True
                 print("Network loaded")
             except Exception as e:
                 print("Exception {} during load(), ignored.".format(e))
         else:
             print("Loading networks from {} (with failure not allowed)".format(self.local(path)))
-            self._load(path)
+            self._load2(path)
             self.loaded = True
             print("Network loaded")
+        print("end of load")
         return self
 
     def _load(self,path=""):
@@ -210,7 +221,10 @@ Users may define a method for each subclass for adding a new load-time feature.
 Each method should call the _load() method of the superclass in turn.
 Users are not expected to call this method directly. Call load() instead.
 Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
+       
         with open(self.local(os.path.join(path,"aux.json")), "r") as f:
+            print("in _load 2")
+
             data = json.load(f)
             _params = self.parameters
             self.parameters = data["parameters"]
@@ -224,6 +238,38 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         for i, o in enumerate(self.optimizers):
             with np.load(self.local(os.path.join(path,f"opt{i}.npz"))) as data:
                 o.set_weights([ data[key] for key in data.files ])
+
+
+    def _load2(self,path=""):
+        """An interface for loading a network.
+Users may define a method for each subclass for adding a new load-time feature.
+Each method should call the _load() method of the superclass in turn.
+Users are not expected to call this method directly. Call load() instead.
+Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
+       
+        with open(os.path.join(path,"aux.json"), "r") as f:
+            data = json.load(f)
+            
+            _params = self.parameters
+            self.parameters = data["parameters"]
+            self.parameters.update(_params)
+            self.epoch = data["epoch"]
+            self.build(tuple(data["input_shape"]))
+            self.build_aux(tuple(data["input_shape"]))
+            self.compile(self.optimizers)
+        for i, net in enumerate(self.nets):
+
+
+        
+            #net.load_weights(self.local(os.path.join(path,f"net{i}.h5")))
+            net.load_weights(os.path.join(path,f"net{i}.h5")) # correction Aymeric
+
+        for i, o in enumerate(self.optimizers):
+            #with np.load(self.local(os.path.join(path,f"opt{i}.npz"))) as data:
+            with np.load(os.path.join(path,f"opt{i}.npz")) as data:
+                o.set_weights([ data[key] for key in data.files ])
+
+        return
 
     def reload_with_shape(self,input_shape,path=""):
         """Rebuild the network for a shape that is different from the training time, then load the weights."""
@@ -310,7 +356,13 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         """Main method for training.
  This method may be overloaded by the subclass into a specific training method, e.g. GAN training."""
 
+        start_time_train = time.time()
+
+        print("in train 1")
+
         epoch      = self.parameters["epoch"]
+
+
         batch_size = self.parameters["batch_size"]
         optimizer  = self.parameters["optimizer"]
         lr         = self.parameters["lr"]
@@ -327,6 +379,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                 # clipvalue=clipvalue,
             )
 
+
+        print("in train 2")
         self.optimizers = list(map(make_optimizer, self.nets))
         self.compile(self.optimizers)
 
@@ -338,6 +392,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         # load the weights to resume if the weights exist
         self.load(allow_failure=True)
 
+        print("in train 3")
 
         # batch size should be smaller / eq to the length of train_data
         batch_size = min(batch_size, len(train_data))
@@ -348,6 +403,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             train_data_to = train_data
         if val_data_to  is None:
             val_data_to  = val_data
+
+        print("in train 4")
 
         def replicate(thing):
             if isinstance(thing, tuple):
@@ -427,10 +484,17 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             return logs
 
         try:
+
+         
             clist.on_train_begin()
             aborted = True
             logs = {}
-            for self.epoch in range(self.epoch,epoch):
+            self.save()
+            #for self.epoch in range(self.epoch,epoch):
+            for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
+
+                print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
+
                 np.random.shuffle(index_array)
                 indices_cache       = [ indices for indices in make_batch(index_array) ]
                 train_data_cache    = [[ train_subdata   [indices] for train_subdata    in train_data    ] for indices in indices_cache ]
@@ -439,13 +503,17 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                 for train_subdata_cache,train_subdata_to_cache in zip(train_data_cache,train_data_to_cache):
                     for net,train_subdata_batch_cache,train_subdata_to_batch_cache in zip(self.nets, train_subdata_cache,train_subdata_to_cache):
                         net.train_on_batch(train_subdata_batch_cache, train_subdata_to_batch_cache)
-
                 logs = {}
+
+
                 for k,v in generate_logs(train_data, train_data_to).items():
                     logs["t_"+k] = v
                 for k,v in generate_logs(val_data,  val_data_to).items():
                     logs["v_"+k] = v
+
+
                 clist.on_epoch_end(self.epoch,logs)
+
                 if self.nets[0].stop_training:
                     break
             aborted = False

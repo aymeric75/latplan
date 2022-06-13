@@ -234,6 +234,7 @@ class StridedConvolutionalMixin(ConvolutionalMixin):
                 BN(),
                 Dropout(self.parameters["dropout"]),
             ])
+
         return layers
 
     def decoder_block(self,i,input_shape):
