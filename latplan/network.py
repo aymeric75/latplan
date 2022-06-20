@@ -57,7 +57,7 @@ This dict can be used while building the network, making it easier to perform a 
                 keras.callbacks.TerminateOnNaN(),
                 keras.callbacks.LambdaCallback(
                     on_epoch_end = self.bar_update,
-                    on_training_end = self.save_at_end,),
+                    on_train_end = self.save_at_end,),
                 keras.callbacks.TensorBoard(
                     histogram_freq = 0,
                     log_dir     = self.path,
@@ -187,6 +187,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                        "epoch"     :self.epoch,
                        "input_shape":self.net.input_shape[1:]}, f , skipkeys=True, cls=NpEncoder, indent=2)
 
+
+
     def load(self,allow_failure=False,path=""):
         """An interface for loading a network.
 Users should not overload this method; Define _load() for each subclass instead.
@@ -199,21 +201,18 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         if allow_failure:
             try:
                 print("Loading networks from {} (with failure allowed)".format(self.local(path)))
-               
-
-                self._load2(self.local(path))
-                #self._load(self.local(path))
+                self._load(path)
                 self.loaded = True
                 print("Network loaded")
             except Exception as e:
                 print("Exception {} during load(), ignored.".format(e))
         else:
             print("Loading networks from {} (with failure not allowed)".format(self.local(path)))
-            self._load2(path)
+            self._load(path)
             self.loaded = True
             print("Network loaded")
-        print("end of load")
         return self
+
 
     def _load(self,path=""):
         """An interface for loading a network.
@@ -221,10 +220,10 @@ Users may define a method for each subclass for adding a new load-time feature.
 Each method should call the _load() method of the superclass in turn.
 Users are not expected to call this method directly. Call load() instead.
 Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
-       
-        with open(self.local(os.path.join(path,"aux.json")), "r") as f:
-            print("in _load 2")
 
+
+        with open(self.local(os.path.join(path,"aux.json")), "r") as f:
+            print("IN OPEN")
             data = json.load(f)
             _params = self.parameters
             self.parameters = data["parameters"]
@@ -234,42 +233,15 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             self.build_aux(tuple(data["input_shape"]))
             self.compile(self.optimizers)
         for i, net in enumerate(self.nets):
+            print("IN BOUCLE ")
+            print(self.local(os.path.join(path,f"net{i}.h5")))
             net.load_weights(self.local(os.path.join(path,f"net{i}.h5")))
         for i, o in enumerate(self.optimizers):
             with np.load(self.local(os.path.join(path,f"opt{i}.npz"))) as data:
                 o.set_weights([ data[key] for key in data.files ])
 
 
-    def _load2(self,path=""):
-        """An interface for loading a network.
-Users may define a method for each subclass for adding a new load-time feature.
-Each method should call the _load() method of the superclass in turn.
-Users are not expected to call this method directly. Call load() instead.
-Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
-       
-        with open(os.path.join(path,"aux.json"), "r") as f:
-            data = json.load(f)
-            
-            _params = self.parameters
-            self.parameters = data["parameters"]
-            self.parameters.update(_params)
-            self.epoch = data["epoch"]
-            self.build(tuple(data["input_shape"]))
-            self.build_aux(tuple(data["input_shape"]))
-            self.compile(self.optimizers)
-        for i, net in enumerate(self.nets):
 
-
-        
-            #net.load_weights(self.local(os.path.join(path,f"net{i}.h5")))
-            net.load_weights(os.path.join(path,f"net{i}.h5")) # correction Aymeric
-
-        for i, o in enumerate(self.optimizers):
-            #with np.load(self.local(os.path.join(path,f"opt{i}.npz"))) as data:
-            with np.load(os.path.join(path,f"opt{i}.npz")) as data:
-                o.set_weights([ data[key] for key in data.files ])
-
-        return
 
     def reload_with_shape(self,input_shape,path=""):
         """Rebuild the network for a shape that is different from the training time, then load the weights."""
@@ -293,6 +265,9 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
     def bar_update(self, epoch, logs):
         "Used for updating the progress bar."
+
+        print("INSIDE bar_update")
+
 
         if not hasattr(self,"bar"):
             self.initialize_bar()
@@ -389,10 +364,18 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         for net in self.nets:
             net._make_train_function()
 
-        # load the weights to resume if the weights exist
-        self.load(allow_failure=True)
 
+
+        print(self.path+"/"+"aux.json")
+
+
+        if(os.path.exists(self.path+"/"+"aux.json")):
+            # load the weights to resume if the weights exist
+            self.load(allow_failure=True)
+        else:
+            self.save()
         print("in train 3")
+
 
         # batch size should be smaller / eq to the length of train_data
         batch_size = min(batch_size, len(train_data))
@@ -429,6 +412,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                         self.path+"/",
                         epoch=epoch),
                 on_train_end = lambda _: self.file_writer.close()))
+
+
+
+        # on_training_end = self.save_at_end,
 
         def assert_length(data):
             l = None
@@ -489,9 +476,11 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             clist.on_train_begin()
             aborted = True
             logs = {}
-            self.save()
+
             #for self.epoch in range(self.epoch,epoch):
-            for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
+            #for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
+            self.epoch = 0
+            for self.epoch in range(self.epoch, 20): # Aymeric [14/06/2022]
 
                 print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
 
@@ -518,13 +507,140 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                     break
             aborted = False
 
+            print("ICI1")
+
         except KeyboardInterrupt:
             print("learning stopped\n")
         finally:
+            print("ICI2")
             clist.on_train_end({"aborted":aborted})
+        print("ICI3")
         return self
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def loadsModelAndWeights(self,train_data,
+              val_data      = None,
+              train_data_to = None,
+              val_data_to   = None,
+              resume        = False,
+              **kwargs):
+        """Custom Method from Aymeric"""
+
+        epoch      = self.parameters["epoch"]
+        batch_size = self.parameters["batch_size"]
+        optimizer  = self.parameters["optimizer"]
+        lr         = self.parameters["lr"]
+        clipnorm   = self.parameters["clipnorm"]
+        # clipvalue  = self.parameters["clipvalue"]
+
+        input_shape = train_data.shape[1:]
+        self.build(input_shape)
+        self.build_aux(input_shape)
+        def make_optimizer(net):
+            return getattr(keras.optimizers,optimizer)(
+                lr,
+                clipnorm=clipnorm
+                # clipvalue=clipvalue,
+            )
+
+        self.optimizers = list(map(make_optimizer, self.nets))
+        self.compile(self.optimizers)
+
+        # populate the optimizers with gradients, otherwise loading fails. this does not need data.
+        # two fields, trainable_weights and total_loss, are filled by Model.compile method.
+        for net in self.nets:
+            net._make_train_function()
+
+
+
+        # load the weights to resume if the weights exist
+        self.load(allow_failure=True, path="samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86")
+
+
+        # batch size should be smaller / eq to the length of train_data
+        batch_size = min(batch_size, len(train_data))
+
+        if val_data     is None:
+            val_data     = train_data
+        if train_data_to is None:
+            train_data_to = train_data
+        if val_data_to  is None:
+            val_data_to  = val_data
+
+        def replicate(thing):
+            if isinstance(thing, tuple):
+                thing = list(thing)
+            if isinstance(thing, list):
+                assert len(thing) == len(self.nets)
+                return thing
+            else:
+                return [thing for _ in self.nets]
+
+        train_data    = replicate(train_data)
+        train_data_to = replicate(train_data_to)
+        val_data      = replicate(val_data)
+        val_data_to   = replicate(val_data_to)
+
+        plot_val_data = np.copy(val_data[0][:1])
+        self.callbacks.append(
+            keras.callbacks.LambdaCallback(
+                on_epoch_end = lambda epoch,logs: \
+                    self.plot_transitions(
+                        plot_val_data,
+                        self.path+"/",
+                        epoch=epoch),
+                on_train_end = lambda _: self.file_writer.close()))
+
+        def assert_length(data):
+            l = None
+            for subdata in data:
+                if not ((l is None) or (len(subdata) == l)):
+                    return False
+                l = len(subdata)
+            return True
+
+        assert assert_length(train_data   )
+        assert assert_length(train_data_to)
+        assert assert_length(val_data    )
+        assert assert_length(val_data_to )
+
+
+        return self
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def save_at_end(self,logs):
+        print("IN SAVE AT END")
         if logs["aborted"]:
             print("training aborted")
         self.save()
@@ -555,7 +671,9 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
     def _plot(self,path,columns,epoch=None):
         """yet another convenient function. This one swaps the rows and columns"""
         columns = list(columns)
+        print("in _plot")
         if epoch is None:
+            print("in _plot 1")
             rows = []
             for seq in zip(*columns):
                 rows.extend(seq)
@@ -564,9 +682,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             return
         else:
             # assume plotting to tensorboard
+            print("in _plot 2")
 
             if (epoch % 10) != 0:
-                return
+               return
 
             _, basename = os.path.split(path)
             import tensorflow as tf
@@ -574,11 +693,21 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             import imageio
             import skimage
 
+
+            print("in _plot 22")
+            print(basename)
+
+            print("columns")
+            #print(columns)
+
             # note: [B,H,W] monochrome image is handled by imageio.
             # usually [B,H,W,1].
             for i, col in enumerate(columns):
+                print("in here1")
                 col = skimage.util.img_as_ubyte(np.clip(col,0.0,1.0))
                 for k, image in enumerate(col):
+                    print("in here2")
+
                     self.file_writer.add_summary(
                         tf.Summary(
                             value = [

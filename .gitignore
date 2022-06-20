@@ -33,3 +33,4 @@ tmp*
 *.ods
 *.tar
 *.bz2
+*.out

@@ -5,10 +5,10 @@ import hashlib
 import numpy as np
 import latplan.model
 import latplan.util.stacktrace
-from latplan.util.tuning import simple_genetic_search, parameters, nn_task, reproduce, load_history
+from latplan.util.tuning import simple_genetic_search, parameters, nn_task, reproduce, load_history, loadsNetWithWeights
 from latplan.util        import curry
 #from ../util import ensure_list, NpEncoder, gpu_info
-
+import matplotlib.pyplot as plt
 
 ################################################################
 # globals
@@ -139,6 +139,36 @@ def plot_autoencoding_image(ae,transitions,label):
     return
 
 
+
+
+def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [16/06/2022]
+
+    print("ae.local(transitions_")
+    print(ae.local(f"transitions_{label}"))
+
+    ae.plot_transitionsBis(transitions, ae.local(f"transitions_{label}"),verbose=True)
+  
+    return
+
+
+# BACK UP
+# def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [14/06/2022]
+
+#     print("ae.local(transitions_")
+#     print(ae.local(f"transitions_{label}"))
+
+#     if hasattr(ae, "plot_transitions"):
+#         transitions = transitions[:6]
+#         ae.plot_transitions(transitions, ae.local(f"transitions_{label}"),verbose=True)
+#     else:
+#         transitions = transitions[:3]
+#         states = transitions.reshape((-1,*transitions.shape[2:]))
+#         ae.plot(states, ae.local(f"states_{label}"),verbose=True)
+
+#     return
+
+
+
 def dump_all_actions(ae,configs,trans_fn,name = "all_actions.csv",repeat=1):
     if 'dump' not in args.mode:
         return
@@ -229,7 +259,13 @@ def _add_misc_info(config):
     # except:
     #     # not very important
     #     pass
+
+
     config["hash"] = hashlib.md5(bytes(str(_key(config)),"utf-8")).hexdigest()
+
+    print("config[hash]")
+    print(config["hash"])
+
     return
 
 
@@ -242,7 +278,6 @@ def run(path,transitions,extra=None):
         plot_autoencoding_image(ae,test,"test")
         dump_actions(ae,transitions)
         return ae
-
 
     def report(net,eval):
         try:
@@ -291,6 +326,8 @@ def run(path,transitions,extra=None):
         task(parameters)
 
 
+        exit()
+        
         # simple_genetic_search(
         #     curry(nn_task, latplan.model.get(parameters["aeclass"]),
         #           path,
@@ -306,8 +343,6 @@ def run(path,transitions,extra=None):
 
 
     if 'testing' in args.mode: # aymeric [13/06/2022]
-
-
 
         parameters['batch_size'] = 400
         parameters['N'] = 300
@@ -336,9 +371,47 @@ def run(path,transitions,extra=None):
         parameters['A'] = 6000 # max # of actions
 
 
-        print(latplan.model.get(parameters["aeclass"]))
-        print(type(latplan.model.get(parameters["aeclass"])))
+        parameters["optimizer"] = "radam"
 
+
+        #print(latplan.model.get(parameters["aeclass"]))
+        #print(type(latplan.model.get(parameters["aeclass"])))
+
+
+        # loadsNetWithWeights (renvoie net, error) dans tunning.py
+        # qui appel loadsModelAndWeights de network.py
+        task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+
+        #print(type(train))
+        #print(train.shape)
+        #print(train[0].shape)
+        #print(train[0][0]) # transition 0/36000, image 0/1
+
+        _add_misc_info(parameters)
+
+
+        parameters['hash'] = "8dd53f4ca49f65444250447a16903f86"
+
+
+        net, error = task(parameters)
+
+
+        #print("ae !!!")
+        #print(ae)
+
+        # plt.figure(figsize=(6,6))
+        # plt.imshow(train[0][0],interpolation='nearest',cmap='gray') # transition 0, image 0
+        # plt.savefig("im1.png") #
+        # plt.figure(figsize=(6,6))
+        # plt.imshow(train[0][1],interpolation='nearest',cmap='gray') # transition 0, image 1
+        # plt.savefig("im2.png") #
+
+        print("THE SHAPE")
+        print(train[:1].shape)
+
+        plot_autoencoding_imageBIS(net, train[:1], "train") # 
+
+        exit()
 
 
 

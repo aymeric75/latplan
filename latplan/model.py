@@ -53,7 +53,6 @@ def load(directory,allow_failure=False):
     return classobj(directory).load(allow_failure=allow_failure)
 
 
-
 # Network mixins ###############################################################
 
 class AE(Network):
@@ -1108,6 +1107,7 @@ class UnidirectionalMixin(AddHocPreconditionMixin, EffectMixin):
 
 
 class BidirectionalMixin(PreconditionMixin, EffectMixin):
+
     def plot_transitions(self,data,path,verbose=False,epoch=None):
         print("plot_transitions 2")
         import os.path
@@ -1116,8 +1116,14 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         suc_path = basename+"_suc"+ext
 
         x = data
-        z = self.encode(x)
-        y = self.autoencode(x)
+
+
+        #print("X SHAPE") # (6, 2, 48, 48, 1)
+  
+        # 6 transitions, 2 images par transition, image de 48x48
+
+        z = self.encode(x)   # donne le vector categorique ?
+        y = self.autoencode(x) # donne l'image
 
         x_pre, x_suc = x[:,0,...], x[:,1,...]
         z_pre, z_suc = z[:,0,...], z[:,1,...]
@@ -1131,14 +1137,17 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         def diff(src,dst):
             return (dst - src + 1)/2
 
-        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc)
+        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc) # images transition
         y_pre_r,     y_suc_r     = self.render(y_pre),     self.render(y_suc)
         y_pre_aae_r, y_suc_aae_r = self.render(y_pre_aae), self.render(y_suc_aae)
 
+        print("plot_transitions 22")
+
         self._plot(basename+"_transition_image"+ext,
-                   [x_pre_r, x_suc_r,
-                    y_pre_r, y_suc_r,
-                    y_pre_aae_r, y_suc_aae_r,],epoch=epoch)
+                   [x_pre_r, x_suc_r,                           # image0 image1
+                    y_pre_r, y_suc_r,                           # image0 image1 passées par l'autoencoder (y = self.autoencode)
+                    y_pre_aae_r, y_suc_aae_r,],epoch=epoch)     # image0 image1 passées par encode+action Puis decode
+                                                                #               avec l'action trouvée à partir des deux representations z
 
         self._plot(basename+"_transition_image_diff"+ext,
                    [diff(x_pre_r,y_pre_r),
@@ -1179,6 +1188,54 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
                    map(squarify,
                        [diff(p_b_pre,p_b_pre_aae),
                         diff(p_b_suc,p_b_suc_aae),]),epoch=epoch)
+        return
+
+
+
+    def plot_transitionsBis(self,data,path,verbose=False,epoch=None):
+        print("plot_transitions 2")
+        import os.path
+        basename, ext = os.path.splitext(path)
+        pre_path = basename+"_pre"+ext
+        suc_path = basename+"_suc"+ext
+        x = data
+
+        #print("X SHAPE") # (6, 2, 48, 48, 1)
+  
+        # 6 transitions, 2 images par transition, image de 48x48
+
+        z = self.encode(x)
+        y = self.autoencode(x)
+
+        x_pre, x_suc = x[:,0,...], x[:,1,...]
+        z_pre, z_suc = z[:,0,...], z[:,1,...]
+        y_pre, y_suc = y[:,0,...], y[:,1,...]
+        action    = self.encode_action([z_pre,z_suc])
+        z_pre_aae = self.regress([z_suc, action]) # representation of img_pre (calc by Regression of z_suc and action)
+        y_pre_aae = self.decode(z_pre_aae)
+        z_suc_aae = self.apply([z_pre, action]) # representation of img_succ (calc from Applying action to z_pre)
+        y_suc_aae = self.decode(z_suc_aae)
+
+        def diff(src,dst):
+            return (dst - src + 1)/2
+
+        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc)
+        y_pre_r,     y_suc_r     = self.render(y_pre),     self.render(y_suc)
+        y_pre_aae_r, y_suc_aae_r = self.render(y_pre_aae), self.render(y_suc_aae)
+
+        print("plot_transitions 22")
+
+        self._plot(basename+"_transition_image"+ext,
+                   [x_pre_r, x_suc_r, # original images
+                    y_pre_r, y_suc_r, # predicted images from SAE
+                    y_pre_aae_r, y_suc_aae_r,],epoch=epoch) # predicted Images from Encoder + Action + Decoder
+                                                            # Where action is guessed by the two encoded transition images
+        self._plot(basename+"_transition_latent"+ext,
+                   map(squarify,
+                       [z_pre,     z_suc, # Cat states (given by the encoder)
+                        z_pre_aae, z_suc_aae,]),epoch=epoch) # cat states given by:
+                                                                # Regress(z_suc, action) (z_pre_aae) , Apply(z_pre, action) (z_suc_aae)
+
         return
 
 
@@ -1621,5 +1678,4 @@ class ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus(St
 
 CubeSpaceAE_AMA4Plus = ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus
 CubeSpaceAE_AMA4Conv = ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus
-
 
