@@ -479,8 +479,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
             #for self.epoch in range(self.epoch,epoch):
             #for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
-            self.epoch = 0
-            for self.epoch in range(self.epoch, 20): # Aymeric [14/06/2022]
+            self.epoch = 700
+            for self.epoch in range(self.epoch, 2000): # Aymeric [14/06/2022]
 
                 print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
 
@@ -664,9 +664,14 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
     def save_array(self,name,data):
         print("Saving to",self.local(name))
+
+        print("data.shape")
+        print(data.shape)
+
         with open(self.local(name), "wb") as f:
             np.savetxt(f,data,"%d")
 
+        exit()
 
     def _plot(self,path,columns,epoch=None):
         """yet another convenient function. This one swaps the rows and columns"""

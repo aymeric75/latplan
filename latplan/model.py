@@ -352,6 +352,7 @@ Note: references to self.parameters[key] are all hyperparameters."""
 
 
     def dump_actions(self,*args,**kwargs):
+        print("dump_actions 1")
         """Is here so that SAE and TAE has the consistent interface"""
         pass
 
@@ -531,6 +532,7 @@ class TransitionWrapper:
         return
 
     def dump_actions(self,transitions,**kwargs):
+        print("dump_actions 2")
         """Since TransitionWrapper may not have action discovery (AAE), it just saves a set of concatenated transitions"""
         transitions_z = self.encode(transitions,**kwargs)
         pre = transitions_z[:,0,...]
@@ -574,9 +576,29 @@ class BaseActionMixin:
 It contans only as many rows as the available actions. Unused actions are removed."""
         N=pre.shape[1]
         data = np.concatenate([pre,suc],axis=1)
-        actions = self.encode_action([pre,suc], **kwargs).round()
 
-        histogram = np.squeeze(actions.sum(axis=0,dtype=int))
+
+        actions = self.encode_action([pre,suc], **kwargs).round() # return actions as one-hot vectors
+
+        array_index_action_for_each_trans = np.where(actions > 0)[2]
+
+
+        #print(array_index_action_for_each_trans)
+
+        print("SHAPE SUC")
+        print(suc.shape)
+
+        #self.save_array("pre.csv", pre)
+        self.save_array("suc.csv", suc)
+
+        #self.save_array("transitions_actions.csv", array_index_action_for_each_trans)
+
+        #print(array_index_action_for_each_trans.shape)
+
+
+        histogram = np.squeeze(actions.sum(axis=0,dtype=int)) # actions is (40000, 1 , 6000)
+                                                              # 40k one-hot vectors, we just count actions 
+                                                              # that are unused
         print(histogram)
         true_num_actions = np.count_nonzero(histogram)
         print(true_num_actions)
@@ -594,15 +616,20 @@ It contans only as many rows as the available actions. Unused actions are remove
     def dump_effects(self, pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids):
         pass
     def dump_preconditions(self, pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids):
+        print("dump_preconditions 0")
         pass
     def dump_actions(self,transitions,**kwargs):
-        transitions_z = self.encode(transitions,**kwargs)
-        pre = transitions_z[:,0,...]
-        suc = transitions_z[:,1,...]
+        print("dump_actions 3")
+        transitions_z = self.encode(transitions,**kwargs) # (40000, 2, 300)
+        pre = transitions_z[:,0,...] # (40000, 300)
+        suc = transitions_z[:,1,...] # (40000, 300)
         pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids = self._dump_actions_prologue(pre,suc,**kwargs)
-        self.save_array("available_actions.csv", action_ids)
-        self.dump_effects      (pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
-        self.dump_preconditions(pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
+        #print("actions shape")
+        #print(actions.shape) # (40000, 1, 6000)
+
+        #self.save_array("available_actions.csv", action_ids)
+        #self.dump_effects      (pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
+        #self.dump_preconditions(pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
     pass
 
 
@@ -786,6 +813,7 @@ It overwrites dump_actions because effects/preconditions must be learned separat
         return z_suc_aae
 
     def dump_actions(self,transitions,**kwargs):
+        print("dump_actions 4")
         transitions_z = self.encode(transitions,**kwargs)
         pre = transitions_z[:,0,...]
         suc = transitions_z[:,1,...]
@@ -891,6 +919,7 @@ class LogitAddEffect2Mixin(LogitEffectMixin):
 
 class AddHocPreconditionMixin:
     def dump_preconditions(self, pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs):
+        print("dump_preconditions 1")
         A = self.parameters["A"]
         # extract the preconditions.
         # it is done by checking if a certain bit is always 0 or always 1.
@@ -925,9 +954,11 @@ class PreconditionMixin:
         return
 
     def dump_preconditions(self, pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs):
-
+        print("dump_preconditions 2")
         # extract the preconditions with deterministic regression.
         pos_precondition = self.regress([np.zeros((true_num_actions, *self.edim())),all_labels], **kwargs)
+        print("pos_precondition shape")
+        print(pos_precondition.shape)
         neg_precondition = 1-self.regress([np.ones((true_num_actions, *self.edim())),all_labels], **kwargs)
         self.save_array("action_pos4.csv",pos_precondition)
         self.save_array("action_neg4.csv",neg_precondition)
@@ -1216,6 +1247,17 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         z_suc_aae = self.apply([z_pre, action]) # representation of img_succ (calc from Applying action to z_pre)
         y_suc_aae = self.decode(z_suc_aae)
 
+
+        print("action")
+        print(action.shape)
+        print("z_pre_aae")
+        print(z_pre_aae.shape)
+        print("z_suc_aae")
+        print(z_suc_aae.shape)
+
+        exit()
+
+
         def diff(src,dst):
             return (dst - src + 1)/2
 
@@ -1229,14 +1271,198 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
                    [x_pre_r, x_suc_r, # original images
                     y_pre_r, y_suc_r, # predicted images from SAE
                     y_pre_aae_r, y_suc_aae_r,],epoch=epoch) # predicted Images from Encoder + Action + Decoder
-                                                            # Where action is guessed by the two encoded transition images
+                                    
+
+        self._plot(basename+"_transition_action"+ext,
+                   [action,],epoch=epoch)
+
+                                                            
         self._plot(basename+"_transition_latent"+ext,
-                   map(squarify,
+                   map(squarify,                    # Where action is guessed by the two encoded transition images
                        [z_pre,     z_suc, # Cat states (given by the encoder)
                         z_pre_aae, z_suc_aae,]),epoch=epoch) # cat states given by:
                                                                 # Regress(z_suc, action) (z_pre_aae) , Apply(z_pre, action) (z_suc_aae)
 
         return
+
+
+    # INPUTS:
+    #   M: #images x #vars (ex: 36000 x 300)
+    #   formula like "A -> B" where A = xi ^ xj and B = xk (for example)
+    #   indices_A [0, 2] i.e A = x0 ^ x2
+    #   indices_B  [1] i.e B = x1
+    #   
+    # OUTPUTS:
+    #   a float
+
+    def Truth_all(self, M, formula, indices_A, indices_B):
+
+
+        # check if xi=xj (0 or 1)   
+
+        # notxi v notxj   <=> not (xi and xj)  (true value (1) matters )
+
+        # write in a file all (the actions and) their prec / effects
+
+        # other file with cat vectors of images
+
+        # and a full transition with cat vectors + prec + effects
+
+        if(formula == "xi -> xj"):
+
+
+            if indices_A[0] == indices_B[0]: # If same variable (ie x -> x), then not relevant
+
+                return 0, 0, 0                     # we return a truth value of 0 (EVEN if it's should be 1)
+
+            mask_A = (M[:, indices_A[0]] == 1.) # mask of M where xi is True
+
+            M_A = M[mask_A, :] # applying the mask to retrieve the sub matrix M_A (<=> all rows fi M where xi is True)
+
+            mask_B = (M_A[:, indices_B[0]] == 1.) # mask of M_A where xj is True
+
+            M_B = M_A[mask_B, :]
+
+            return M_A.shape[0], M_B.shape[0], M_B.shape[0] / M_A.shape[0] if M_A.shape[0] > 0 else 0
+
+        return False 
+
+
+
+
+    def Truth_unique(self, M, index):
+
+        mask = (M[:, index] == 1.)
+
+
+        M_sub = M[mask, :]
+
+
+        if(M.shape[0] == 0):
+            return False
+        else:
+            return M_sub.shape[0] / M.shape[0]
+
+
+
+
+
+
+    def testCat_vars(self,data,path,verbose=False,epoch=None):
+        print("plot_transitions 2")
+        import os.path
+        basename, ext = os.path.splitext(path)
+        pre_path = basename+"_pre"+ext
+        suc_path = basename+"_suc"+ext
+        x = data
+
+        #print("X SHAPE") # (6, 2, 48, 48, 1)
+        # 6 transitions, 2 images par transition, image de 48x48
+
+        z = self.encode(x)
+        y = self.autoencode(x)
+
+        x_pre, x_suc = x[:,0,...], x[:,1,...]
+        z_pre, z_suc = z[:,0,...], z[:,1,...]
+        y_pre, y_suc = y[:,0,...], y[:,1,...]
+        action    = self.encode_action([z_pre,z_suc])
+        z_pre_aae = self.regress([z_suc, action]) # representation of img_pre (calc by Regression of z_suc and action)
+        y_pre_aae = self.decode(z_pre_aae)
+        z_suc_aae = self.apply([z_pre, action]) # representation of img_succ (calc from Applying action to z_pre)
+        y_suc_aae = self.decode(z_suc_aae)
+
+        # We consider only the categorical representations of both images, i.e, z_pre and z_suc
+
+        # print("z_pre.shape")
+        # print(z_pre.shape)
+        # print(z_pre[0:1,].shape)
+        # print(z_pre[0:1,])
+
+
+        # Test of x_100 variable on the first 1000s images of dataset z_pre
+        print(" ")
+        print(" ")
+        print(" ")
+        print(" ")
+        print(" ")
+        print("Test of x_100 variable on the first 1000s images of dataset z_pre")
+        print("self.Truth_unique(z_pre[0:1000,], 100)")
+        print(self.Truth_unique(z_pre[0:1000,], 100))
+
+        exit()
+
+        #print(self.Truth_all(z_pre[0:1,], "xi -> xj", [6], [6]))
+
+        # a = {1 : "a", 4:"c", 0:"d", 8:"r"}
+        # list(reversed(sorted(a.items())))
+        #  [(8, 'r'), (4, 'c'), (1, 'a'), (0, 'd')]
+
+
+        formula = "xi -> xj"
+
+        dico = {}
+
+        # loop over all variables
+        # double loop coz we consider pairs of variables (x1 -> x2)
+        for i in range(0,300):
+            for j in range(0,300):
+
+
+                lenA, lenB, tr = self.Truth_all(z_pre[:1000,], formula, [i], [j])
+
+                #dico[formula+" with "+" i="+str(i)+" j="+str(j)+" #x A is true : "+str(lenA)] = tr
+
+                dico[formula+" with "+" i="+str(i)+" j="+str(j)] = [tr, lenA]
+                #dico[formula+" with "+" i="+str(i)+" j="+str(j)] = tr
+
+
+        # order by tr (ie, the highest truth values pairs for the formula first)
+        #print("RESULAT ::")
+        #print(dict(reversed(sorted(dico.items(), key=lambda item: item[1][0]))))
+
+        # order by lenA (i.e pairs where A was true most of time first)
+        print("RESULAT ::")
+        print(dict(reversed(sorted(dico.items(), key=lambda item: item[1][1]))))
+
+        # TEST
+
+        exit()
+
+        # Could be useful !
+        #x_times_true = np.sum(z_pre, axis=0)
+        #sums_of_truths = np.sum(sub_array, axis=0) # number of 'match' for each vars vs the_var (index_var)
+
+
+
+
+        def diff(src,dst):
+            return (dst - src + 1)/2
+
+        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc)
+        y_pre_r,     y_suc_r     = self.render(y_pre),     self.render(y_suc)
+        y_pre_aae_r, y_suc_aae_r = self.render(y_pre_aae), self.render(y_suc_aae)
+
+
+        self._plot(basename+"_transition_image"+ext,
+                   [x_pre_r, x_suc_r, # original images
+                    y_pre_r, y_suc_r, # predicted images from SAE
+                    y_pre_aae_r, y_suc_aae_r,],epoch=epoch) # predicted Images from Encoder + Action + Decoder
+                                    
+
+        self._plot(basename+"_transition_action"+ext,
+                   [action,],epoch=epoch)
+
+                                                            
+        self._plot(basename+"_transition_latent"+ext,
+                   map(squarify,                    # Where action is guessed by the two encoded transition images
+                       [z_pre,     z_suc, # Cat states (given by the encoder)
+                        z_pre_aae, z_suc_aae,]),epoch=epoch) # cat states given by:
+                                                                # Regress(z_suc, action) (z_pre_aae) , Apply(z_pre, action) (z_suc_aae)
+
+        return
+
+
+
 
 
 

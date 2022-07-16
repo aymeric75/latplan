@@ -1,6 +1,7 @@
 import os
 import os.path
 import glob
+import sys
 import hashlib
 import numpy as np
 import latplan.model
@@ -9,6 +10,7 @@ from latplan.util.tuning import simple_genetic_search, parameters, nn_task, repr
 from latplan.util        import curry
 #from ../util import ensure_list, NpEncoder, gpu_info
 import matplotlib.pyplot as plt
+#np.set_printoptions(threshold=sys.maxsize)
 
 ################################################################
 # globals
@@ -151,6 +153,19 @@ def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [16/06/2022]
     return
 
 
+
+
+def testCatVars(ae,transitions,label): # Aymeric [16/06/2022]
+
+    print("ae.local(transitions_")
+    print(ae.local(f"transitions_{label}"))
+
+    ae.testCat_vars(transitions, ae.local(f"transitions_{label}"),verbose=True)
+  
+    return
+
+
+
 # BACK UP
 # def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [14/06/2022]
 
@@ -192,6 +207,11 @@ def dump_all_actions(ae,configs,trans_fn,name = "all_actions.csv",repeat=1):
 def dump_actions(ae,transitions,name = "actions.csv",repeat=1):
     if 'dump' not in args.mode:
         return
+    print(ae.local(name))
+    ae.dump_actions(transitions,batch_size = 1000)
+
+
+def dump_actionsBIS(ae,transitions,name = "actions.csv",repeat=1):
     print(ae.local(name))
     ae.dump_actions(transitions,batch_size = 1000)
 
@@ -319,6 +339,11 @@ def run(path,transitions,extra=None):
 
         parameters['A'] = 6000 # max # of actions
 
+        # nn_task(network, path, train_in, train_out, val_in, val_out, parameters, resume=False) single iteration of NN training
+
+        print(latplan.model.get(parameters["aeclass"]))
+        exit()
+
         task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
 
         _add_misc_info(parameters)
@@ -390,6 +415,7 @@ def run(path,transitions,extra=None):
         _add_misc_info(parameters)
 
 
+        # CHOIX DU NETWORK
         parameters['hash'] = "8dd53f4ca49f65444250447a16903f86"
 
 
@@ -407,13 +433,52 @@ def run(path,transitions,extra=None):
         # plt.savefig("im2.png") #
 
         print("THE SHAPE")
-        print(train[:1].shape)
+        print(train.shape)
 
-        plot_autoencoding_imageBIS(net, train[:1], "train") # 
+        #Plot la 1ere transition de train (train[:1]) les plots sont dans samples/puzzle.../logs/8dd.....
+        plot_autoencoding_imageBIS(net, train[:1], "train") #
+        #testCatVars(net, train, "train")
 
         exit()
 
 
+    if 'dump_actions' in args.mode: # Aymeric [28-06-22]
+
+
+        # dump_actions 3 dans model.py
+
+        # puis _dump_actions_prologue dans model.py
+
+        # puis dump_preconditions 2
+
+        # puis save_array dans network.py
+
+        parameters['batch_size'] = 400
+        parameters['N'] = 300
+        parameters['beta_d'] = 10
+        parameters['beta_z'] = 10
+        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
+        parameters['aae_activation'] = 'relu' # see 9.2
+        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
+        parameters['max_temperature'] = 5.0
+        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
+        parameters['conv_pooling'] = 1 # = train_common.py
+        parameters['conv_kernel'] = 5 # = train_common.py
+        parameters['conv_per_pooling']  = 1
+        parameters['conv_channel']  = 32
+        parameters['conv_channel_increment'] = 1
+        parameters['eff_regularizer'] = None
+        parameters['A'] = 6000 # max # of actions
+        parameters["optimizer"] = "radam"
+        task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+        _add_misc_info(parameters)
+        parameters['hash'] = "8dd53f4ca49f65444250447a16903f86"
+
+        net, error = task(parameters)
+
+        dump_actionsBIS(net,transitions)
+
+        exit()
 
     if 'resume' in args.mode:
         simple_genetic_search(
