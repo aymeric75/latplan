@@ -11,6 +11,7 @@ from .util.tuning    import InvalidHyperparameterError
 from .util.layers    import LinearSchedule
 import os.path
 import time
+import sys
 
 # modified version
 import progressbar
@@ -222,6 +223,12 @@ Users are not expected to call this method directly. Call load() instead.
 Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
 
 
+        print("sys.path")
+        print(sys.path)
+
+        print("whole ")
+        print(self.local(os.path.join(path,"aux.json")))
+
         with open(self.local(os.path.join(path,"aux.json")), "r") as f:
             print("IN OPEN")
             data = json.load(f)
@@ -345,8 +352,27 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         # clipvalue  = self.parameters["clipvalue"]
 
         input_shape = train_data.shape[1:]
+
+
+        print("before")
+        print(self.nets)
+
+
         self.build(input_shape)
+
+        print("self.build")
+
+        self.nets[0].summary()
+
         self.build_aux(input_shape)
+
+        print("self.build_aux")
+
+        self.nets[0].summary()
+
+
+        exit()
+
         def make_optimizer(net):
             return getattr(keras.optimizers,optimizer)(
                 lr,
@@ -357,6 +383,9 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
         print("in train 2")
         self.optimizers = list(map(make_optimizer, self.nets))
+
+
+
         self.compile(self.optimizers)
 
         # populate the optimizers with gradients, otherwise loading fails. this does not need data.
@@ -457,6 +486,11 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             losses = []
             logs   = {}
             for i, (net, subdata, subdata_to) in enumerate(zip(self.nets, data, data_to)):
+
+                print("NET")
+                print(net)
+                print(net.metrics_names)
+
                 evals = net.evaluate(subdata,
                                      subdata_to,
                                      batch_size=batch_size,
@@ -479,8 +513,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
             #for self.epoch in range(self.epoch,epoch):
             #for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
-            self.epoch = 700
-            for self.epoch in range(self.epoch, 2000): # Aymeric [14/06/2022]
+            self.epoch = 0
+            for self.epoch in range(self.epoch, 2): # Aymeric [14/06/2022]
 
                 print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
 
@@ -490,8 +524,17 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                 train_data_to_cache = [[ train_subdata_to[indices] for train_subdata_to in train_data_to ] for indices in indices_cache ]
                 clist.on_epoch_begin(self.epoch,logs)
                 for train_subdata_cache,train_subdata_to_cache in zip(train_data_cache,train_data_to_cache):
+                    i = 0
                     for net,train_subdata_batch_cache,train_subdata_to_batch_cache in zip(self.nets, train_subdata_cache,train_subdata_to_cache):
+                        # print("NEEETTT")
+                        # print(net.summary())
+
+                        # if(i>1):
+                        #     exit()
+                        # i+=1
+
                         net.train_on_batch(train_subdata_batch_cache, train_subdata_to_batch_cache)
+
                 logs = {}
 
 
@@ -516,6 +559,70 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             clist.on_train_end({"aborted":aborted})
         print("ICI3")
         return self
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def loadsModelAndWeightsGOOD(self,train_data,
+              **kwargs):
+        """Custom Method from Aymeric"""
+
+        epoch      = self.parameters["epoch"]
+        batch_size = self.parameters["batch_size"]
+        optimizer  = self.parameters["optimizer"]
+        lr         = self.parameters["lr"]
+        clipnorm   = self.parameters["clipnorm"]
+        # clipvalue  = self.parameters["clipvalue"]
+
+        input_shape = train_data.shape[1:]
+        self.build(input_shape)
+        self.build_aux(input_shape)
+
+
+        def make_optimizer(net):
+            return getattr(keras.optimizers,optimizer)(
+                lr,
+                clipnorm=clipnorm
+                # clipvalue=clipvalue,
+            )
+
+        self.optimizers = list(map(make_optimizer, self.nets))
+        self.compile(self.optimizers)
+
+        # populate the optimizers with gradients, otherwise loading fails. this does not need data.
+        # two fields, trainable_weights and total_loss, are filled by Model.compile method.
+        for net in self.nets:
+            net._make_train_function()
+
+
+
+        # load the weights to resume if the weights exist
+        self.load(allow_failure=True, path="samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86")
+
+
+
+        return self
+
+
+
+
+
+
+
+
+
+
+
 
 
 

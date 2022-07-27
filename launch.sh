@@ -11,6 +11,7 @@
 
 
 
+
 #./train_kltune.py dump_actions puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Conv
 #./train_kltune.py testing puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Conv
 ./train_kltune.py learn puzzle mnist 3 3 40000 CubeSpaceAE_AMA4Conv

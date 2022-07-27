@@ -1,7 +1,6 @@
 #!/bin/bash -x
 
-# Generate PDDL domains for the training results stored in samples/ directory.
-
+# Generate PDDL domains for the training results stored in samples/ directory.=
 # Note: this script works on propositional action models dumped into csv. It
 # works for both AMA3 and AMA4.
 
@@ -36,4 +35,7 @@ export -f run
 
 common="parallel -j 1 --keep-order jbsub -mem 32g -cores 1 -queue x86_1h -proj pddl-ama3"
 
-$common run ::: $directory/*/logs/*/
+
+# $common run ::: $directory/*/logs/*/
+
+run $directory/*/logs/*/

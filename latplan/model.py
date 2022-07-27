@@ -265,6 +265,8 @@ Note: references to self.parameters[key] are all hyperparameters."""
         z = self._encode(x)
         y = self._decode(z)
 
+        print("CONSTRUCTIING AUTOENCODER")
+
         self.encoder     = Model(x, z)
         self.autoencoder = Model(x, y)
         self.net = self.autoencoder
@@ -1222,9 +1224,11 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         return
 
 
+    def latplan_encoder(self, data):
+        return self.encode(data)
 
-    def plot_transitionsBis(self,data,path,verbose=False,epoch=None):
-        print("plot_transitions 2")
+    def plot_transitionsBis(self, data, path, verbose=False, epoch=None):
+        print("plot_transitionsBisplot_transitionsBis")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext
@@ -1235,8 +1239,9 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
   
         # 6 transitions, 2 images par transition, image de 48x48
 
-        z = self.encode(x)
-        y = self.autoencode(x)
+        z = self.encode(x) # encoder 
+        y = self.autoencode(x) # 
+
 
         x_pre, x_suc = x[:,0,...], x[:,1,...]
         z_pre, z_suc = z[:,0,...], z[:,1,...]
@@ -1716,6 +1721,8 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         super()._build_around(input_shape)
 
     def _build_primary(self,input_shape):
+
+        print("_build_primary_build_primary")
 
         x = Input(shape=(2,*input_shape))
         _, x_pre, x_suc = dapply(x)

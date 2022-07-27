@@ -11,11 +11,11 @@ env=latplan
         exit 1
     }
 
-    conda env create -n $env -f environment.yml || {
-        echo "installation failed; cleaning up"
-        conda env remove -n $env
-        exit 1
-    }
+    # conda env create -n $env -f environment.yml || {
+    #     echo "installation failed; cleaning up"
+    #     conda env remove -n $env
+    #     exit 1
+    # }
 
     conda activate $env
 
@@ -36,7 +36,9 @@ env=latplan
 
     # these are required for building dependencies properly under conda
     conda env config vars set CPATH=${CONDA_PREFIX}/include:${CONDA_PREFIX}/x86_64-conda-linux-gnu/sysroot/usr/include:
-    conda env config vars set ROSWELL_HOME=$(readlink -ef .roswell)
+    conda env config vars set ROSWELL_HOME=$(readlink -ef roswell) # CHANGED
+
+
 
     # note: "variables" field in yaml file introduced in conda 4.9 does not work because it does not expand shell variables
 
@@ -45,15 +47,19 @@ env=latplan
 
     echo $CPATH ; echo $LD_LIBRARY_PATH
 
+
     conda env config vars list
+
+
 
     ################################################################
     # build fast downward
 
-    (
-        cd downward
-        ./build.py -j $(cat /proc/cpuinfo | grep -c processor) release
-    )
+    # (
+    #     cd downward
+    #     ./build.py -j $(cat /proc/cpuinfo | grep -c processor) release
+    # )
+
 
     ################################################################
     # build ARRIVAL validator through roswell
@@ -67,8 +73,9 @@ env=latplan
         ros dynamic-space-size=8000 install numcl arrival eazy-gnuplot magicffi dataloader
     )
 
+
     make -j 1 -C lisp
-    ./download-dataset.sh
+    # ./download-dataset.sh
 
 ) && {
     conda activate $env >/dev/null 2>/dev/null || echo "This script must be sourced, not executed. Run it like: source $0"

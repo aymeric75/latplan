@@ -155,6 +155,32 @@ def nn_task(network, path, train_in, train_out, val_in, val_out, parameters, res
 
 
 
+
+
+
+
+# loads the network and returns it with weights [Aymeric 21/07/2022]
+def loadsNetWithWeightsGOOD(network, path, train_in, train_out, val_in, val_out, parameters, resume=False):
+    print("class precedence list:")
+    for c in network.mro():
+        print(" ",c)
+    print("clearning tf session")
+    import keras.backend
+    keras.backend.clear_session()
+    print("cleared tf session")
+    net = network(path,parameters=parameters)
+    net.loadsModelAndWeightsGOOD(train_in,
+              **parameters,)
+    import numpy as np
+    error = np.array(net.evaluate(val_in,val_out,batch_size=100,verbose=0))
+    error = np.nan_to_num(error,nan=float("inf"))
+    return net, error
+
+
+
+
+
+
 # loads the network and returns it with weights [Aymeric 13/06/2022]
 def loadsNetWithWeights(network, path, train_in, train_out, val_in, val_out, parameters, resume=False):
     print("class precedence list:")

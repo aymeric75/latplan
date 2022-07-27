@@ -113,9 +113,12 @@ def main(parameters={}):
     args = parser.parse_args()
     print("44")
     task = args.task
+    print(task)
     delattr(args,"task")
     latplan.util.tuning.parameters.update(vars(args))
     print("55")
+
+
     sae_path = "_".join(sys.argv[2:])
     try:
         task(args)
@@ -165,22 +168,6 @@ def testCatVars(ae,transitions,label): # Aymeric [16/06/2022]
     return
 
 
-
-# BACK UP
-# def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [14/06/2022]
-
-#     print("ae.local(transitions_")
-#     print(ae.local(f"transitions_{label}"))
-
-#     if hasattr(ae, "plot_transitions"):
-#         transitions = transitions[:6]
-#         ae.plot_transitions(transitions, ae.local(f"transitions_{label}"),verbose=True)
-#     else:
-#         transitions = transitions[:3]
-#         states = transitions.reshape((-1,*transitions.shape[2:]))
-#         ae.plot(states, ae.local(f"states_{label}"),verbose=True)
-
-#     return
 
 
 
@@ -342,7 +329,8 @@ def run(path,transitions,extra=None):
         # nn_task(network, path, train_in, train_out, val_in, val_out, parameters, resume=False) single iteration of NN training
 
         print(latplan.model.get(parameters["aeclass"]))
-        exit()
+        
+
 
         task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
 
@@ -353,18 +341,6 @@ def run(path,transitions,extra=None):
 
         exit()
         
-        # simple_genetic_search(
-        #     curry(nn_task, latplan.model.get(parameters["aeclass"]),
-        #           path,
-        #           train, train, val, val), # noise data is used for tuning metric
-        #     parameters,
-        #     path,
-        #     limit              = 100,
-        #     initial_population = 100,
-        #     population         = 100,
-        #     report             = report,
-        # )
-
 
 
     if 'testing' in args.mode: # aymeric [13/06/2022]
@@ -398,6 +374,10 @@ def run(path,transitions,extra=None):
 
         parameters["optimizer"] = "radam"
 
+        print(path)
+
+        exit()
+
 
         #print(latplan.model.get(parameters["aeclass"]))
         #print(type(latplan.model.get(parameters["aeclass"])))
@@ -422,8 +402,9 @@ def run(path,transitions,extra=None):
         net, error = task(parameters)
 
 
-        #print("ae !!!")
-        #print(ae)
+        print(net)
+
+
 
         # plt.figure(figsize=(6,6))
         # plt.imshow(train[0][0],interpolation='nearest',cmap='gray') # transition 0, image 0

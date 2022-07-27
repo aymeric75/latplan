@@ -8,6 +8,7 @@ from ..puzzles.objutil import bboxes_to_coord, random_object_masking, tiled_bbox
 from ..util.stacktrace import format
 
 def load_puzzle(type,width,height,num_examples,objects=True,**kwargs):
+
     import importlib
     generator = 'latplan.puzzles.puzzle_{}'.format(type)
     parameters["generator"] = generator
