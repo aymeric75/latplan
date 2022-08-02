@@ -16,6 +16,8 @@ learn/events*
 *.lprof
 /samples/table
 samples*/
+/search/
+/roswell/
 problem-instances/*/
 blocks*/
 countries*/
