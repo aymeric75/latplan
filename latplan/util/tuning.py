@@ -16,6 +16,10 @@ parameters = {}
 
 from tensorflow.python.framework.errors_impl import ResourceExhaustedError, InvalidArgumentError
 
+from tensorflow.python.keras.backend import set_session
+
+import tensorflow as tf
+
 import signal
 class SignalInterrupt(Exception):
     """Raised when a signal handler was invoked"""
@@ -166,14 +170,24 @@ def loadsNetWithWeightsGOOD(network, path, train_in, train_out, val_in, val_out,
         print(" ",c)
     print("clearning tf session")
     import keras.backend
-    keras.backend.clear_session()
+    #keras.backend.clear_session()
+
+    #tf.variable_scope(reuse=True) 
+
+    session = tf.Session()
+    graph = tf.get_default_graph()
+    set_session(session)
+
     print("cleared tf session")
     net = network(path,parameters=parameters)
     net.loadsModelAndWeightsGOOD(train_in,
               **parameters,)
     import numpy as np
-    error = np.array(net.evaluate(val_in,val_out,batch_size=100,verbose=0))
-    error = np.nan_to_num(error,nan=float("inf"))
+
+    with graph.as_default():
+        set_session(session)
+        error = np.array(net.evaluate(val_in,val_out,batch_size=100,verbose=0))
+        error = np.nan_to_num(error,nan=float("inf"))
     return net, error
 
 

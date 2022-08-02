@@ -1,0 +1,6 @@
+/g100_work/uBS21_InfGer_0/latplan/CMakeFiles/translate.dir
+/g100_work/uBS21_InfGer_0/latplan/CMakeFiles/edit_cache.dir
+/g100_work/uBS21_InfGer_0/latplan/CMakeFiles/rebuild_cache.dir
+/g100_work/uBS21_InfGer_0/latplan/search/CMakeFiles/downward.dir
+/g100_work/uBS21_InfGer_0/latplan/search/CMakeFiles/edit_cache.dir
+/g100_work/uBS21_InfGer_0/latplan/search/CMakeFiles/rebuild_cache.dir

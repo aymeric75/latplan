@@ -151,10 +151,13 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
     def local(self,path=""):
         """A convenient method for converting a relative path to the learned result directory
 into a full path."""
-        return os.path.join(self.path,path)
+
+        if('samples' in path):
+            return path
+        else:   
+            return os.path.join(self.path,path)
 
     def save(self,path=""):
-        print("in save !!!!")
         """An interface for saving a network.
 Users should not overload this method; Define _save() for each subclass instead.
 This function calls _save bottom-up from the least specialized class.
@@ -199,6 +202,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             print("Avoided loading {} twice.".format(self))
             return
 
+
         if allow_failure:
             try:
                 print("Loading networks from {} (with failure allowed)".format(self.local(path)))
@@ -223,11 +227,6 @@ Users are not expected to call this method directly. Call load() instead.
 Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around methods."""
 
 
-        print("sys.path")
-        print(sys.path)
-
-        print("whole ")
-        print(self.local(os.path.join(path,"aux.json")))
 
         with open(self.local(os.path.join(path,"aux.json")), "r") as f:
             print("IN OPEN")
@@ -354,24 +353,22 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         input_shape = train_data.shape[1:]
 
 
-        print("before")
-        print(self.nets)
+        #print("before")
+        #print(self.nets)
 
 
         self.build(input_shape)
 
-        print("self.build")
+        #print("self.build")
 
-        self.nets[0].summary()
+        #self.nets[0].summary()
 
         self.build_aux(input_shape)
 
-        print("self.build_aux")
+        #print("self.build_aux")
 
-        self.nets[0].summary()
+        #self.nets[0].summary()
 
-
-        exit()
 
         def make_optimizer(net):
             return getattr(keras.optimizers,optimizer)(
@@ -778,7 +775,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         with open(self.local(name), "wb") as f:
             np.savetxt(f,data,"%d")
 
-        exit()
 
     def _plot(self,path,columns,epoch=None):
         """yet another convenient function. This one swaps the rows and columns"""

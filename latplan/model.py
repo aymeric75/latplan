@@ -124,7 +124,17 @@ The latter two are used for verifying the performance of the AE.
 
     def autoencode(self,data,**kwargs):
         self.load()
-        return self.autoencoder.predict(data,**kwargs)
+        print("KWARGS !!!!")
+        print(**kwargs)
+        writer = tf.summary.FileWriter('tflogs', tf.get_default_graph())
+
+        #self.autoencoder.summary()
+
+        # is data of the shape  (6, 2, 48, 48, 1) ???
+        print('data shape')
+        print(data.shape)
+
+        return self.autoencoder.predict(data, steps=100, **kwargs)
 
     def autodecode(self,data,**kwargs):
         self.load()
@@ -483,6 +493,9 @@ class TransitionWrapper:
             return fn(data,*args,**kwargs)
         except ValueError:
             # not transitions
+
+            #return data
+
             return fn(np.expand_dims(data,1).repeat(2, axis=1),*args,**kwargs)[:,0]
 
     def encode(self, data, *args, **kwargs):

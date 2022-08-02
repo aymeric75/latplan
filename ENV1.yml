@@ -1,0 +1,26 @@
+name: latplan
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - cmake
+  - sqlite[version='>=3.35']
+  - pip
+  - automake
+  - libcurl
+  - bison
+  - python=3.7
+  - flex
+  - libmagic
+  - cudatoolkit=10.0
+  - cudnn=7
+  - h5py=2.9
+  - tensorboard
+  - merv::envvar-pythonpath-null
+variables:
+  CPATH: '/g100/home/userexternal/abarbin0/.conda/envs/latplan/include:/g100/home/userexternal/abarbin0/.conda/envs/latplan/x86_64-conda-linux-gnu/sysroot/usr/include:'
+  LD_LIBRARY_PATH: ''
+  PKG_CONFIG_PATH: ''
+  PYTHONPATH: ''
+  ROSWELL_HOME: /g100_work/uBS21_InfGer_0/latplan/roswell
+prefix: /g100/home/userexternal/abarbin0/.conda/envs/latplan
