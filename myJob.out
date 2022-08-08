@@ -1,3 +1,641 @@
-make: Entering directory '/g100_work/uBS21_InfGer_0/latplan/lisp'
-make: Nothing to be done for 'all'.
-make: Leaving directory '/g100_work/uBS21_InfGer_0/latplan/lisp'
+Default float: float32
+22
+33
+44
+<function puzzle at 0x14c9a3f18050>
+55
+loaded. picsize: [48, 48]
+(40000, 2, 48, 48, 1)
+normalized shape: (48, 48, 1) (48, 48, 1)
+<class 'latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus'>
+config[hash]
+8dd53f4ca49f65444250447a16903f86
+class precedence list:
+  <class 'latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus'>
+  <class 'latplan.mixins.encoder_decoder.StridedConvolutionalMixin'>
+  <class 'latplan.mixins.encoder_decoder.ConvolutionalMixin'>
+  <class 'latplan.model.ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus'>
+  <class 'latplan.model.DetActionMixin'>
+  <class 'latplan.model.NormalizedLogitAddBidirectionalMixin'>
+  <class 'latplan.model.NormalizedLogitAddPreconditionMixin'>
+  <class 'latplan.model.NormalizedLogitAddEffectMixin'>
+  <class 'latplan.model.LogitEffectMixin'>
+  <class 'latplan.model.BaseActionMixinAMA4Plus'>
+  <class 'latplan.model.BidirectionalMixin'>
+  <class 'latplan.model.PreconditionMixin'>
+  <class 'latplan.model.EffectMixin'>
+  <class 'latplan.model.BaseActionMixin'>
+  <class 'latplan.model.TransitionWrapper'>
+  <class 'latplan.model.StateAE'>
+  <class 'latplan.mixins.latent.ConcreteLatentMixin'>
+  <class 'latplan.model.EarlyStopMixin'>
+  <class 'latplan.mixins.encoder_decoder.FullConnectedMixin'>
+  <class 'latplan.mixins.encoder_decoder.EncoderDecoderMixin'>
+  <class 'latplan.model.AE'>
+  <class 'latplan.network.Network'>
+  <class 'object'>
+clearning tf session
+cleared tf session
+in train 1
+Building networks
+building a convolutional encoder
+pool per layer: 1 depth: 2 total pool: 1 H: 48 W: 48 dH: 0 dW: 0
+<keras.layers.convolutional.Conv2D object at 0x14c97eb259d0>
+[0, 48, 48, 1] -> (0, 48, 48, 32) : <keras.layers.convolutional.Conv2D object at 0x14c97eb259d0>
+<keras.layers.normalization.BatchNormalization object at 0x14c9a3f53fd0>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.normalization.BatchNormalization object at 0x14c9a3f53fd0>
+<keras.layers.core.Dropout object at 0x14c97eb25b50>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.core.Dropout object at 0x14c97eb25b50>
+<keras.layers.convolutional.Conv2D object at 0x14c9a01d3fd0>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.convolutional.Conv2D object at 0x14c9a01d3fd0>
+<keras.layers.normalization.BatchNormalization object at 0x14c97eb11290>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.normalization.BatchNormalization object at 0x14c97eb11290>
+<keras.layers.core.Dropout object at 0x14c97eb11090>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.core.Dropout object at 0x14c97eb11090>
+latent space shape is (48, 48, 32) : 300 propositions in total
+building a convolutional decoder
+pool per layer: 1 depth: 2 total pool: 1 H: 48 W: 48 dH: 0 dW: 0
+<keras.layers.core.Reshape object at 0x14c97eb11910>
+[0, 48, 48, 32] -> (0, 48, 48, 32) : <keras.layers.core.Reshape object at 0x14c97eb11910>
+<keras.layers.convolutional.Conv2DTranspose object at 0x14c97eb11d10>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.convolutional.Conv2DTranspose object at 0x14c97eb11d10>
+<keras.layers.normalization.BatchNormalization object at 0x14c97eb11dd0>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.normalization.BatchNormalization object at 0x14c97eb11dd0>
+<keras.layers.core.Dropout object at 0x14c97eb19490>
+(0, 48, 48, 32) -> (0, 48, 48, 32) : <keras.layers.core.Dropout object at 0x14c97eb19490>
+<keras.layers.convolutional.Conv2DTranspose object at 0x14c97eb19250>
+(0, 48, 48, 32) -> (0, 48, 48, 1) : <keras.layers.convolutional.Conv2DTranspose object at 0x14c97eb19250>
+_build_primary_build_primary
+Network built
+Building auxiliary networks
+Auxiliary network built
+in train 2
+Compiling networks
+there are 1 networks.
+there are 1 optimizers.
+there are 1 losses.
+compiling <keras.engine.training.Model object at 0x14c97e37ca10> with <keras_radam.optimizers.RAdam object at 0x14c97dd90b90>, <function BaseActionMixinAMA4Plus._build_primary.<locals>.loss at 0x14c97e37f170>.
+Network compiled
+samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86/aux.json
+Loading networks from samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86/ (with failure allowed)
+IN OPEN
+Avoided building <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided building <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided compiling <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+IN BOUCLE 
+samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86/net0.h5
+loading additional networks
+Network loaded
+in train 3
+in train 4
+epoch n° 0 0.25179899533589684 minutes
+NET
+<keras.engine.training.Model object at 0x14c97e37ca10>
+['loss', 'tau', 'pdiff_z1z2', 'pdiff_z0z3', 'pdiff_z0z1', 'pdiff_z0z2', 'kl_z0', 'kl_z1', 'kl_a_z0', 'kl_a_z1', 'kl_z1z2', 'kl_z0z3', 'x0y0', 'x1y1', 'x0y3', 'x1y2', 'elbo']
+NET
+<keras.engine.training.Model object at 0x14c97e37ca10>
+['loss', 'tau', 'pdiff_z1z2', 'pdiff_z0z3', 'pdiff_z0z1', 'pdiff_z0z2', 'kl_z0', 'kl_z1', 'kl_a_z0', 'kl_a_z1', 'kl_z1z2', 'kl_z0z3', 'x0y0', 'x1y1', 'x0y3', 'x1y2', 'elbo']
+INSIDE bar_update
+plot_transitions 2
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+KWARGS !!!!
+
+data shape
+(1, 2, 48, 48, 1)
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+plot_transitions 22
+in _plot
+in _plot 2
+in _plot 22
+_transition_image
+columns
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here1
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_image_diff
+columns
+in here1
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here1
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here2
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_action
+columns
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_latent
+columns
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_latent_diff
+columns
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_latent_eff
+columns
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_prob
+columns
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in here1
+in here2
+in _plot
+in _plot 2
+in _plot 22
+_transition_prob_diff
+columns
+in here1
+in here2
+in here1
+in here2
+epoch n° 1 0.921043312549591 minutes
+NET
+<keras.engine.training.Model object at 0x14c97e37ca10>
+['loss', 'tau', 'pdiff_z1z2', 'pdiff_z0z3', 'pdiff_z0z1', 'pdiff_z0z2', 'kl_z0', 'kl_z1', 'kl_a_z0', 'kl_a_z1', 'kl_z1z2', 'kl_z0z3', 'x0y0', 'x1y1', 'x0y3', 'x1y2', 'elbo']
+NET
+<keras.engine.training.Model object at 0x14c97e37ca10>
+['loss', 'tau', 'pdiff_z1z2', 'pdiff_z0z3', 'pdiff_z0z1', 'pdiff_z0z2', 'kl_z0', 'kl_z1', 'kl_a_z0', 'kl_a_z1', 'kl_z1z2', 'kl_z0z3', 'x0y0', 'x1y1', 'x0y3', 'x1y2', 'elbo']
+INSIDE bar_update
+plot_transitions 2
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+KWARGS !!!!
+
+data shape
+(1, 2, 48, 48, 1)
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+Avoided loading <latplan.model.ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus object at 0x14c9a3ef7550> twice.
+plot_transitions 22
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+in _plot
+in _plot 2
+ICI1
+ICI2
+IN SAVE AT END
+Saving the network to samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86/
+saving additional networks
+Network saved
+ICI3

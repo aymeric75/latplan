@@ -51,6 +51,8 @@ env=latplan
     conda env config vars list
 
 
+    echo "TEST1"
+
 
     ################################################################
     # build fast downward
@@ -66,16 +68,22 @@ env=latplan
     (
         cd roswell
         sh bootstrap
+        echo "TEST2"
         ./configure --prefix=${CONDA_PREFIX}
         make
+        echo "TEST3"
         make install
+        echo "TEST4"
         ros setup
+        echo "TEST5"
         ros dynamic-space-size=8000 install numcl arrival eazy-gnuplot magicffi dataloader
+        echo "TEST6"
     )
 
-
+    echo "TEST7"
     make -j 1 -C lisp
     # ./download-dataset.sh
+    echo "TEST8"
 
 ) && {
     conda activate $env >/dev/null 2>/dev/null || echo "This script must be sourced, not executed. Run it like: source $0"
