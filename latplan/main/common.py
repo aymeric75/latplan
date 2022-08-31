@@ -99,6 +99,12 @@ def add_common_arguments(subparser,task,objs=False):
                            nargs='?',
                            default="",
                            help="A string which is appended to the directory name to label each experiment.")
+
+    subparser.add_argument("hash",
+                           nargs='?',
+                           default="",
+                           help="A string which replace (forces) the last part of the directory name")
+
     return
 
 
@@ -106,20 +112,34 @@ def add_common_arguments(subparser,task,objs=False):
 def main(parameters={}):
     print("22")
     import latplan.util.tuning
+    
     latplan.util.tuning.parameters.update(parameters)
     print("33")
     import sys
     global args, sae_path
     args = parser.parse_args()
     print("44")
+    print(args)
     task = args.task
     print(task)
     delattr(args,"task")
     latplan.util.tuning.parameters.update(vars(args))
     print("55")
+    print(sys.argv[2:])
 
 
-    sae_path = "_".join(sys.argv[2:])
+    #sae_path = "_".join(sys.argv[2:])
+    #ae_path = "_".join(sys.argv[2])
+    #print(sae_path)
+    #print(parameters)
+
+    if(args.hash != ""):
+        sae_path = "_".join(sys.argv[2:-1])
+    else:
+        sae_path = "_".join(sys.argv[2:])
+
+    print(sae_path)
+
     try:
         task(args)
     except:
@@ -277,6 +297,10 @@ def _add_misc_info(config):
 
 
 def run(path,transitions,extra=None):
+
+    print("path at the begining of def run")
+    print(path)
+
     train, val, test = train_val_test_split(transitions)
 
     def postprocess(ae):
@@ -331,8 +355,7 @@ def run(path,transitions,extra=None):
         print(latplan.model.get(parameters["aeclass"]))
         
 
-
-        task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+        task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val, parameters)
 
         _add_misc_info(parameters)
 
@@ -374,9 +397,6 @@ def run(path,transitions,extra=None):
 
         parameters["optimizer"] = "radam"
 
-        print(path)
-
-        exit()
 
 
         #print(latplan.model.get(parameters["aeclass"]))
@@ -401,9 +421,7 @@ def run(path,transitions,extra=None):
 
         net, error = task(parameters)
 
-
-        print(net)
-
+        exit()
 
 
         # plt.figure(figsize=(6,6))
@@ -453,7 +471,11 @@ def run(path,transitions,extra=None):
         parameters["optimizer"] = "radam"
         task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
         _add_misc_info(parameters)
-        parameters['hash'] = "8dd53f4ca49f65444250447a16903f86"
+
+        if(args.hash != ""):
+            print("args.hash")
+            print(args.hash)
+            parameters["hash"] = args.hash
 
         net, error = task(parameters)
 

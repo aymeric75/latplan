@@ -45,6 +45,13 @@ def Sequential (array):
             print(" "*debug_level+"applying {}({})".format(f,arg))
         debug_level += 2
         try:
+            # print("ff")
+            # print(f)
+            # print("argarg")
+            # print(arg)
+            # if(isinstance(arg, Dimension)):
+            #     result = f(float(arg))
+            # else:
             result = f(arg)
         finally:
             debug_level -= 2

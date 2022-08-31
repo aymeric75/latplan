@@ -125,16 +125,48 @@ The latter two are used for verifying the performance of the AE.
     def autoencode(self,data,**kwargs):
         self.load()
         print("KWARGS !!!!")
-        print(**kwargs)
+        print(f' Kwargs: {kwargs}' )
+
         writer = tf.summary.FileWriter('tflogs', tf.get_default_graph())
 
         #self.autoencoder.summary()
 
-        # is data of the shape  (6, 2, 48, 48, 1) ???
-        print('data shape')
+        # is data of the shape  (6, 2, 48, 48, 1) ??? YES!
+        print('data from autoencode') # (36000, 2, 48, 48, 1)
+        print(type(data))
         print(data.shape)
 
-        return self.autoencoder.predict(data, steps=100, **kwargs)
+        #return self.autoencoder.predict(data, steps=10, **kwargs)
+        return self.autoencoder.predict(data, **kwargs)
+
+
+
+    def returnloss(self,data, session,**kwargs):
+        
+        self.load()
+    
+        #data = data.numpy()
+
+        data = data.eval(session=session)
+
+        data = np.expand_dims(data, axis=0)
+
+        print('data from returnloss')
+        print(type(data))
+        print(data.shape)
+
+
+        y_true = data
+
+        #return self.autoencoder.predict(data, steps=10, **kwargs)
+        y_pred = self.autoencoder.predict(data, steps=10, **kwargs)
+
+        res_equal = 1. - tf.reduce_mean(tf.abs(y_pred - y_true), [1,2,3])
+
+        loss = 1 - tf.reduce_sum(res_equal, axis=0)
+
+        return loss
+
 
     def autodecode(self,data,**kwargs):
         self.load()
@@ -586,7 +618,7 @@ class BaseActionMixin:
         self.metrics.append(direct)
         return dummy(pred)
 
-    def _dump_actions_prologue(self,pre,suc,**kwargs):
+    def _dump_actions_prologue(self, pre, suc, **kwargs):
         """Compute and return a matrix, whose each row is a one-hot vector.
 It contans only as many rows as the available actions. Unused actions are removed."""
         N=pre.shape[1]
@@ -642,9 +674,9 @@ It contans only as many rows as the available actions. Unused actions are remove
         #print("actions shape")
         #print(actions.shape) # (40000, 1, 6000)
 
-        #self.save_array("available_actions.csv", action_ids)
-        #self.dump_effects      (pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
-        #self.dump_preconditions(pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
+        self.save_array("available_actions.csv", action_ids)
+        self.dump_effects      (pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
+        self.dump_preconditions(pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
     pass
 
 
@@ -888,7 +920,7 @@ class BoolSmoothMinMaxEffectMixin(CategoricalEffectMixin):
 
 
 class LogitEffectMixin:
-    def _build_primary(self,input_shape):
+    def _build_primary(self, input_shape):
         self.eff_decoder_net = [
             MyFlatten(),
             Dense(np.prod(self.edim()),use_bias=False,kernel_regularizer=self.parameters["eff_regularizer"]),
@@ -900,7 +932,7 @@ class LogitEffectMixin:
             self.scaling_pre = Lambda(lambda x: 2*x - 1) # same scale as the final batchnorm
         super()._build_primary(input_shape)
 
-    def _apply(self,z_pre,action):
+    def _apply(self, z_pre, action):
         l_eff     = Sequential(self.eff_decoder_net)(action)
         l_pre     = self.scaling_pre(z_pre)
         l_suc_aae = add([l_pre,l_eff])
@@ -1273,8 +1305,6 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         print("z_suc_aae")
         print(z_suc_aae.shape)
 
-        exit()
-
 
         def diff(src,dst):
             return (dst - src + 1)/2
@@ -1444,7 +1474,6 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
 
         # TEST
 
-        exit()
 
         # Could be useful !
         #x_times_true = np.sum(z_pre, axis=0)
@@ -1627,7 +1656,8 @@ class BaseActionMixinAMA3Plus(UnidirectionalMixin, BaseActionMixin):
         p_pre = wrap(l_pre, K.sigmoid(l_pre))
         p_suc = wrap(l_suc, K.sigmoid(l_suc))
         # note: _action takes a probability, but feeding 0/1 data in test time is fine (0/1 can be seen as probabilities)
-        action    = self._action(p_pre,p_suc)
+        action    = self._action(p_pre, p_suc)
+
         z_suc_aae = self._apply(z_pre,action)
         y_suc_aae = self._decode(z_suc_aae)
         z_aae = dmerge(z_pre, z_suc_aae)
@@ -1733,11 +1763,15 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         ]
         super()._build_around(input_shape)
 
-    def _build_primary(self,input_shape):
+    def _build_primary(self, input_shape):
 
         print("_build_primary_build_primary")
 
-        x = Input(shape=(2,*input_shape))
+        x = Input(shape=(2,*input_shape), name="THEINPUT")
+
+        print("the input")
+        print(x)
+
         _, x_pre, x_suc = dapply(x)
         z, z_pre, z_suc = dapply(x, self._encode)
         y, y_pre, y_suc = dapply(z, self._decode)
@@ -1747,8 +1781,42 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         p_pre = wrap(l_pre, K.sigmoid(l_pre))
         p_suc = wrap(l_suc, K.sigmoid(l_suc))
         # note: _action takes a probability, but feeding 0/1 data in test time is fine (0/1 can be seen as probabilities)
-        action    = self._action (p_pre,p_suc)
+        action    = self._action(p_pre,p_suc)
+
+
+        z_pre_zeros = tf.zeros_like(z_pre)
+        z_suc_zeros = tf.zeros_like(z_suc)
+
         z_suc_aae = self._apply  (z_pre,action)
+
+
+        ##############
+        #    MASKS   #
+        ##############
+
+        # EFFECTS (add / del)
+        add_effect = self._apply(z_pre_zeros, action)
+        del_effect = 1 - self._apply(z_pre_zeros, action)
+   
+
+        # PRECONDITIONS (pos / neg)
+        pos_precondition = self._regress(z_suc_zeros,action)
+        neg_precondition = 1 - self._regress(z_suc_zeros,action)
+
+
+
+        batch_zeros = tf.zeros_like(add_effect[:, 0])
+        #batch_ones = tf.ones_like(add_effect[:, 0])
+
+        boolean_mask = tf.math.equal(add_effect[:, 0], batch_zeros)
+
+        # Additional loss conditioned on masks (here, conditioned on the  1st bit of the ADD/EFFECT mask : has to be one !)
+        supple_loss = tf.where(boolean_mask, tf.repeat([999999.], repeats=tf.shape(boolean_mask)[0]), tf.repeat([0.], repeats=tf.shape(boolean_mask)[0]))
+
+
+        # 1000000 (1e6)
+        # 999999
+
         z_pre_aae = self._regress(z_suc,action)
         y_suc_aae = self._decode(z_suc_aae)
         y_pre_aae = self._decode(z_pre_aae)
@@ -1784,7 +1852,9 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         forward_loss2  = self.parameters["beta_z"] * kl_z0 + x0y0 + kl_a_z0 + x1y2
         backward_loss1 = self.parameters["beta_z"] * kl_z1 + x1y1 + kl_a_z1 + self.parameters["beta_d"] * kl_z0z3 + x0y0
         backward_loss2 = self.parameters["beta_z"] * kl_z1 + x1y1 + kl_a_z1 + x0y3
-        total_loss = (forward_loss1 + forward_loss2 + backward_loss1 + backward_loss2)/4 
+        total_loss = (forward_loss1 + forward_loss2 + backward_loss1 + backward_loss2 + supple_loss)/4 
+
+
         forward_elbo1  = kl_z0 + x0y0 + kl_a_z0 + kl_z1z2 + x1y1
         forward_elbo2  = kl_z0 + x0y0 + kl_a_z0 + x1y2
         backward_elbo1 = kl_z1 + x1y1 + kl_a_z1 + kl_z0z3 + x0y0
@@ -1805,6 +1875,10 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         self.add_metric("x0y3",x0y3)
         self.add_metric("x1y2",x1y2)
         self.add_metric("elbo",elbo)
+
+        self.add_metric("total_loss",total_loss)
+        #self.add_metric("supple_loss",supple_loss)
+
         def loss(*args):
             return total_loss
         self.loss = loss
@@ -1813,6 +1887,9 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         self.net = Model(x, y_aae)
         self.encoder     = Model(x, z) # note : directly through the encoder, not AAE
         self.autoencoder = Model(x, y) # note : directly through the decoder, not AAE
+
+        print("'BUILT' autoencoder")
+
 
         # verify the note above : self.autoencoder.weights does not contain weights for AAE
         # print(self.net.weights)

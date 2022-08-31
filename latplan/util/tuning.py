@@ -179,6 +179,9 @@ def loadsNetWithWeightsGOOD(network, path, train_in, train_out, val_in, val_out,
     set_session(session)
 
     print("cleared tf session")
+
+    print(parameters)
+
     net = network(path,parameters=parameters)
     net.loadsModelAndWeightsGOOD(train_in,
               **parameters,)
@@ -203,8 +206,10 @@ def loadsNetWithWeights(network, path, train_in, train_out, val_in, val_out, par
     print("clearning tf session")
     import keras.backend
     keras.backend.clear_session()
-    print("cleared tf session")
+    print("cleared tf session from loadsNetWithWeights")
+    print(path)
     net = network(path,parameters=parameters)
+    print(net.path) # !!!!!!!!!!!!!!!
     net.loadsModelAndWeights(train_in,
               val_data=val_in,
               train_data_to=train_out,

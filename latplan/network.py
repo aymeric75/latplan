@@ -202,6 +202,9 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             print("Avoided loading {} twice.".format(self))
             return
 
+        print("PATH IN LOAD")
+
+        print(path)
 
         if allow_failure:
             try:
@@ -237,6 +240,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             self.epoch = data["epoch"]
             self.build(tuple(data["input_shape"]))
             self.build_aux(tuple(data["input_shape"]))
+
+
+                
+            
             self.compile(self.optimizers)
         for i, net in enumerate(self.nets):
             print("IN BOUCLE ")
@@ -511,7 +518,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             #for self.epoch in range(self.epoch,epoch):
             #for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
             self.epoch = 0
-            for self.epoch in range(self.epoch, 2): # Aymeric [14/06/2022]
+            for self.epoch in range(self.epoch, 2000): # Aymeric [14/06/2022]
 
                 print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
 
@@ -604,8 +611,15 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
 
         # load the weights to resume if the weights exist
-        self.load(allow_failure=True, path="samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86")
+        #self.load(allow_failure=True, path="samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86")
 
+        print("SELF.PARAMETERS HASH ")
+        print(self.parameters["hash"])
+
+        print("SELF.Path ")
+        print(self.path)
+
+        self.load(allow_failure=True)
 
 
         return self
@@ -672,9 +686,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             net._make_train_function()
 
 
-
+        print("before loooadddd")
+        print(self.path)
         # load the weights to resume if the weights exist
-        self.load(allow_failure=True, path="samples/puzzle_mnist_3_3_40000_CubeSpaceAE_AMA4Conv/logs/8dd53f4ca49f65444250447a16903f86")
+        self.load(allow_failure=True, path=self.path)
 
 
         # batch size should be smaller / eq to the length of train_data

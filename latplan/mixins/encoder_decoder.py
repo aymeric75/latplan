@@ -97,6 +97,9 @@ When self.parameters["N"] is specified, it wraps the latent layer with a Dense l
         p  = self.parameters["conv_pooling"]
         total_pool = p ** d
         H, W, C = mod_input_shape
+        H = int(H)
+        W = int(W)
+        C = int(C)
         import math
         dH = math.ceil(H/total_pool)*total_pool - H
         dW = math.ceil(W/total_pool)*total_pool - W

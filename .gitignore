@@ -26,10 +26,11 @@ problem-instances-ama2/
 problem-instances-16/
 problem-instances-16-korf/
 problem-instances-cube-aae/
-/build/
+/build/latp
 /dist/
 /latplan.egg-info/
 /puzzle/
+/samples/
 /sokoban/
 tmp*
 *.sqlite
