@@ -24,6 +24,18 @@ class DynamicMessage(progressbar.DynamicMessage):
             return 6 * '-'
 
 
+
+
+class CustomCallback(keras.callbacks.Callback):
+
+
+    def on_train_batch_end(self, batch, logs=None):
+        #keys = list(logs.keys())
+        #print("...Training: end of batch {}; got log keys: {}".format(batch, keys))
+        print(self.model.metrics_tensors[0])
+
+
+
 class Network:
     """Base class for various neural networks including GANs, AEs and Classifiers.
 Provides an interface for saving / loading the trained weights as well as hyperparameters.
@@ -50,6 +62,7 @@ This dict can be used while building the network, making it easier to perform a 
         self.nets    = [None]
         self.losses  = [None]
         self.epoch   = 0
+        self.tensor = None
         if parameters:
             # handle the test-time where parameters is not given
             self.path = os.path.join(path,"logs",str(self.parameters["hash"]))
@@ -202,9 +215,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             print("Avoided loading {} twice.".format(self))
             return
 
-        print("PATH IN LOAD")
-
-        print(path)
 
         if allow_failure:
             try:
@@ -232,7 +242,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
 
         with open(self.local(os.path.join(path,"aux.json")), "r") as f:
-            print("IN OPEN")
+
             data = json.load(f)
             _params = self.parameters
             self.parameters = data["parameters"]
@@ -246,8 +256,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             
             self.compile(self.optimizers)
         for i, net in enumerate(self.nets):
-            print("IN BOUCLE ")
-            print(self.local(os.path.join(path,f"net{i}.h5")))
+          
             net.load_weights(self.local(os.path.join(path,f"net{i}.h5")))
         for i, o in enumerate(self.optimizers):
             with np.load(self.local(os.path.join(path,f"opt{i}.npz"))) as data:
@@ -335,6 +344,7 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         self.metrics.append(thunk)
         return
 
+
     def train(self,train_data,
               val_data      = None,
               train_data_to = None,
@@ -360,22 +370,12 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         input_shape = train_data.shape[1:]
 
 
-        #print("before")
-        #print(self.nets)
 
 
         self.build(input_shape)
 
-        #print("self.build")
-
-        #self.nets[0].summary()
 
         self.build_aux(input_shape)
-
-        #print("self.build_aux")
-
-        #self.nets[0].summary()
-
 
         def make_optimizer(net):
             return getattr(keras.optimizers,optimizer)(
@@ -385,12 +385,15 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             )
 
 
-        print("in train 2")
         self.optimizers = list(map(make_optimizer, self.nets))
 
 
 
         self.compile(self.optimizers)
+
+
+
+        self.metrics_tensors = [self.tensor]
 
         # populate the optimizers with gradients, otherwise loading fails. this does not need data.
         # two fields, trainable_weights and total_loss, are filled by Model.compile method.
@@ -399,7 +402,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
 
 
-        print(self.path+"/"+"aux.json")
 
 
         if(os.path.exists(self.path+"/"+"aux.json")):
@@ -407,11 +409,12 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             self.load(allow_failure=True)
         else:
             self.save()
-        print("in train 3")
+
 
 
         # batch size should be smaller / eq to the length of train_data
         batch_size = min(batch_size, len(train_data))
+
 
         if val_data     is None:
             val_data     = train_data
@@ -420,7 +423,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         if val_data_to  is None:
             val_data_to  = val_data
 
-        print("in train 4")
 
         def replicate(thing):
             if isinstance(thing, tuple):
@@ -446,7 +448,9 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                         epoch=epoch),
                 on_train_end = lambda _: self.file_writer.close()))
 
-
+        self.callbacks.append(CustomCallback())
+        
+        #self.callbacks = [CustomCallback()]
 
         # on_training_end = self.save_at_end,
 
@@ -491,9 +495,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             logs   = {}
             for i, (net, subdata, subdata_to) in enumerate(zip(self.nets, data, data_to)):
 
-                print("NET")
-                print(net)
-                print(net.metrics_names)
 
                 evals = net.evaluate(subdata,
                                      subdata_to,
@@ -518,7 +519,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             #for self.epoch in range(self.epoch,epoch):
             #for self.epoch in range(self.epoch,500): # Aymeric [10/06/2022]
             self.epoch = 0
-            for self.epoch in range(self.epoch, 2000): # Aymeric [14/06/2022]
+
+            count = 0
+
+            for self.epoch in range(self.epoch, 1): # Aymeric [14/06/2022]
 
                 print("epoch n° "+str(self.epoch)+" "+str((time.time() - start_time_train)/60)+" minutes")
 
@@ -527,17 +531,21 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
                 train_data_cache    = [[ train_subdata   [indices] for train_subdata    in train_data    ] for indices in indices_cache ]
                 train_data_to_cache = [[ train_subdata_to[indices] for train_subdata_to in train_data_to ] for indices in indices_cache ]
                 clist.on_epoch_begin(self.epoch,logs)
+
+                j = 0
+
                 for train_subdata_cache,train_subdata_to_cache in zip(train_data_cache,train_data_to_cache):
                     i = 0
-                    for net,train_subdata_batch_cache,train_subdata_to_batch_cache in zip(self.nets, train_subdata_cache,train_subdata_to_cache):
-                        # print("NEEETTT")
-                        # print(net.summary())
-
-                        # if(i>1):
-                        #     exit()
-                        # i+=1
+                    for net, train_subdata_batch_cache,train_subdata_to_batch_cache in zip(self.nets, train_subdata_cache, train_subdata_to_cache):
+                    
 
                         net.train_on_batch(train_subdata_batch_cache, train_subdata_to_batch_cache)
+
+                        # call on_train_batch_end(i, data)
+
+                        # where data is the output of train_step
+
+                        j += 1
 
                 logs = {}
 
@@ -552,9 +560,15 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
                 if self.nets[0].stop_training:
                     break
+
+                print("metrics_tensors")
+                print(self.metrics_tensors[0])
+
             aborted = False
 
-            print("ICI1")
+
+
+
 
         except KeyboardInterrupt:
             print("learning stopped\n")
@@ -622,6 +636,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
         self.load(allow_failure=True)
 
 
+        print("weights of the network BIS")
+        print(self.nets[0].get_weights()[0][0][0])
+
+
         return self
 
 
@@ -686,63 +704,10 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             net._make_train_function()
 
 
-        print("before loooadddd")
-        print(self.path)
         # load the weights to resume if the weights exist
         self.load(allow_failure=True, path=self.path)
 
-
-        # batch size should be smaller / eq to the length of train_data
-        batch_size = min(batch_size, len(train_data))
-
-        if val_data     is None:
-            val_data     = train_data
-        if train_data_to is None:
-            train_data_to = train_data
-        if val_data_to  is None:
-            val_data_to  = val_data
-
-        def replicate(thing):
-            if isinstance(thing, tuple):
-                thing = list(thing)
-            if isinstance(thing, list):
-                assert len(thing) == len(self.nets)
-                return thing
-            else:
-                return [thing for _ in self.nets]
-
-        train_data    = replicate(train_data)
-        train_data_to = replicate(train_data_to)
-        val_data      = replicate(val_data)
-        val_data_to   = replicate(val_data_to)
-
-        plot_val_data = np.copy(val_data[0][:1])
-        self.callbacks.append(
-            keras.callbacks.LambdaCallback(
-                on_epoch_end = lambda epoch,logs: \
-                    self.plot_transitions(
-                        plot_val_data,
-                        self.path+"/",
-                        epoch=epoch),
-                on_train_end = lambda _: self.file_writer.close()))
-
-        def assert_length(data):
-            l = None
-            for subdata in data:
-                if not ((l is None) or (len(subdata) == l)):
-                    return False
-                l = len(subdata)
-            return True
-
-        assert assert_length(train_data   )
-        assert assert_length(train_data_to)
-        assert assert_length(val_data    )
-        assert assert_length(val_data_to )
-
-
         return self
-
-
 
 
 
@@ -786,6 +751,8 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
 
         print("data.shape")
         print(data.shape)
+        print("self.local(name)")
+        print(self.local(name))
 
         with open(self.local(name), "wb") as f:
             np.savetxt(f,data,"%d")
@@ -794,7 +761,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
     def _plot(self,path,columns,epoch=None):
         """yet another convenient function. This one swaps the rows and columns"""
         columns = list(columns)
-        print("in _plot")
         if epoch is None:
             print("in _plot 1")
             rows = []
@@ -805,7 +771,6 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             return
         else:
             # assume plotting to tensorboard
-            print("in _plot 2")
 
             if (epoch % 10) != 0:
                return
@@ -817,20 +782,11 @@ Poor python coders cannot enjoy the cleanness of CLOS :before, :after, :around m
             import skimage
 
 
-            print("in _plot 22")
-            print(basename)
-
-            print("columns")
-            #print(columns)
-
             # note: [B,H,W] monochrome image is handled by imageio.
             # usually [B,H,W,1].
             for i, col in enumerate(columns):
-                print("in here1")
                 col = skimage.util.img_as_ubyte(np.clip(col,0.0,1.0))
                 for k, image in enumerate(col):
-                    print("in here2")
-
                     self.file_writer.add_summary(
                         tf.Summary(
                             value = [

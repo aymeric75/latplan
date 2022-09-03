@@ -180,7 +180,6 @@ def loadsNetWithWeightsGOOD(network, path, train_in, train_out, val_in, val_out,
 
     print("cleared tf session")
 
-    print(parameters)
 
     net = network(path,parameters=parameters)
     net.loadsModelAndWeightsGOOD(train_in,

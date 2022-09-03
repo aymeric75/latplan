@@ -124,17 +124,13 @@ The latter two are used for verifying the performance of the AE.
 
     def autoencode(self,data,**kwargs):
         self.load()
-        print("KWARGS !!!!")
-        print(f' Kwargs: {kwargs}' )
+     
+        print("def autoencode dans model.py")
 
         writer = tf.summary.FileWriter('tflogs', tf.get_default_graph())
 
         #self.autoencoder.summary()
 
-        # is data of the shape  (6, 2, 48, 48, 1) ??? YES!
-        print('data from autoencode') # (36000, 2, 48, 48, 1)
-        print(type(data))
-        print(data.shape)
 
         #return self.autoencoder.predict(data, steps=10, **kwargs)
         return self.autoencoder.predict(data, **kwargs)
@@ -1727,7 +1723,7 @@ class BaseActionMixinAMA3Plus(UnidirectionalMixin, BaseActionMixin):
 # AMA4+ Space AE : Bidirectional model with correct ELBO #######################
 
 class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
-    def _save(self,path=""):
+    def _save(self, path=""):
         # saved separately so that we can switch between loading or not loading it.
         # since the weights are fixed size, loading it with a different input shape causes an error.
         super()._save(path)
@@ -1795,7 +1791,7 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         ##############
 
         # EFFECTS (add / del)
-        add_effect = self._apply(z_pre_zeros, action)
+        add_effect = self._apply(z_pre_zeros, action) # Tensor("binary_concrete_3/concrete_3/cond/Merge:0", shape=(?, 300), dtype=float32)
         del_effect = 1 - self._apply(z_pre_zeros, action)
    
 
@@ -1810,8 +1806,15 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
 
         boolean_mask = tf.math.equal(add_effect[:, 0], batch_zeros)
 
+
         # Additional loss conditioned on masks (here, conditioned on the  1st bit of the ADD/EFFECT mask : has to be one !)
-        supple_loss = tf.where(boolean_mask, tf.repeat([999999.], repeats=tf.shape(boolean_mask)[0]), tf.repeat([0.], repeats=tf.shape(boolean_mask)[0]))
+        supple_loss = tf.where(boolean_mask, tf.repeat([997.], repeats=tf.shape(boolean_mask)[0]), tf.repeat([0.], repeats=tf.shape(boolean_mask)[0]))
+
+        #print("supple_loss eval")
+
+        self.tensor = supple_loss
+        #tfs = tf.InteractiveSession()
+
 
 
         # 1000000 (1e6)
@@ -1852,7 +1855,10 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         forward_loss2  = self.parameters["beta_z"] * kl_z0 + x0y0 + kl_a_z0 + x1y2
         backward_loss1 = self.parameters["beta_z"] * kl_z1 + x1y1 + kl_a_z1 + self.parameters["beta_d"] * kl_z0z3 + x0y0
         backward_loss2 = self.parameters["beta_z"] * kl_z1 + x1y1 + kl_a_z1 + x0y3
-        total_loss = (forward_loss1 + forward_loss2 + backward_loss1 + backward_loss2 + supple_loss)/4 
+        
+        #total_loss = (forward_loss1 + forward_loss2 + backward_loss1 + backward_loss2 + supple_loss)/5 
+
+        total_loss = (forward_loss1 + forward_loss2 + backward_loss1 + backward_loss2)/4 
 
 
         forward_elbo1  = kl_z0 + x0y0 + kl_a_z0 + kl_z1z2 + x1y1
@@ -1877,7 +1883,7 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         self.add_metric("elbo",elbo)
 
         self.add_metric("total_loss",total_loss)
-        #self.add_metric("supple_loss",supple_loss)
+        self.add_metric("supple_loss",supple_loss)
 
         def loss(*args):
             return total_loss
@@ -1889,6 +1895,9 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         self.autoencoder = Model(x, y) # note : directly through the decoder, not AAE
 
         print("'BUILT' autoencoder")
+
+
+
 
 
         # verify the note above : self.autoencoder.weights does not contain weights for AAE

@@ -110,35 +110,22 @@ def add_common_arguments(subparser,task,objs=False):
 
 
 def main(parameters={}):
-    print("22")
     import latplan.util.tuning
     
     latplan.util.tuning.parameters.update(parameters)
-    print("33")
     import sys
     global args, sae_path
     args = parser.parse_args()
-    print("44")
-    print(args)
     task = args.task
-    print(task)
     delattr(args,"task")
     latplan.util.tuning.parameters.update(vars(args))
-    print("55")
-    print(sys.argv[2:])
 
-
-    #sae_path = "_".join(sys.argv[2:])
-    #ae_path = "_".join(sys.argv[2])
-    #print(sae_path)
-    #print(parameters)
 
     if(args.hash != ""):
         sae_path = "_".join(sys.argv[2:-1])
     else:
         sae_path = "_".join(sys.argv[2:])
 
-    print(sae_path)
 
     try:
         task(args)
@@ -168,8 +155,6 @@ def plot_autoencoding_image(ae,transitions,label):
 
 def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [16/06/2022]
 
-    print("ae.local(transitions_")
-    print(ae.local(f"transitions_{label}"))
 
     ae.plot_transitionsBis(transitions, ae.local(f"transitions_{label}"),verbose=True)
   
@@ -180,8 +165,6 @@ def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [16/06/2022]
 
 def testCatVars(ae,transitions,label): # Aymeric [16/06/2022]
 
-    print("ae.local(transitions_")
-    print(ae.local(f"transitions_{label}"))
 
     ae.testCat_vars(transitions, ae.local(f"transitions_{label}"),verbose=True)
   
@@ -197,7 +180,8 @@ def dump_all_actions(ae,configs,trans_fn,name = "all_actions.csv",repeat=1):
     l     = len(configs)
     batch = 5000
     loop  = (l // batch) + 1
-    print(ae.local(name))
+
+
     with open(ae.local(name), 'wb') as f:
         for i in range(repeat):
             for begin in range(0,loop*batch,batch):
@@ -219,6 +203,7 @@ def dump_actions(ae,transitions,name = "actions.csv",repeat=1):
 
 
 def dump_actionsBIS(ae,transitions,name = "actions.csv",repeat=1):
+    print("ae.local(name)")
     print(ae.local(name))
     ae.dump_actions(transitions,batch_size = 1000)
 
@@ -290,16 +275,11 @@ def _add_misc_info(config):
 
     config["hash"] = hashlib.md5(bytes(str(_key(config)),"utf-8")).hexdigest()
 
-    print("config[hash]")
-    print(config["hash"])
 
     return
 
 
 def run(path,transitions,extra=None):
-
-    print("path at the begining of def run")
-    print(path)
 
     train, val, test = train_val_test_split(transitions)
 
@@ -350,9 +330,10 @@ def run(path,transitions,extra=None):
 
         parameters['A'] = 6000 # max # of actions
 
+        parameters["batch_size"] = 1
+
         # nn_task(network, path, train_in, train_out, val_in, val_out, parameters, resume=False) single iteration of NN training
 
-        print(latplan.model.get(parameters["aeclass"]))
         
 
         task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val, parameters)
@@ -399,18 +380,9 @@ def run(path,transitions,extra=None):
 
 
 
-        #print(latplan.model.get(parameters["aeclass"]))
-        #print(type(latplan.model.get(parameters["aeclass"])))
-
-
         # loadsNetWithWeights (renvoie net, error) dans tunning.py
         # qui appel loadsModelAndWeights de network.py
         task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
-
-        #print(type(train))
-        #print(train.shape)
-        #print(train[0].shape)
-        #print(train[0][0]) # transition 0/36000, image 0/1
 
         _add_misc_info(parameters)
 
@@ -423,16 +395,6 @@ def run(path,transitions,extra=None):
 
         exit()
 
-
-        # plt.figure(figsize=(6,6))
-        # plt.imshow(train[0][0],interpolation='nearest',cmap='gray') # transition 0, image 0
-        # plt.savefig("im1.png") #
-        # plt.figure(figsize=(6,6))
-        # plt.imshow(train[0][1],interpolation='nearest',cmap='gray') # transition 0, image 1
-        # plt.savefig("im2.png") #
-
-        print("THE SHAPE")
-        print(train.shape)
 
         #Plot la 1ere transition de train (train[:1]) les plots sont dans samples/puzzle.../logs/8dd.....
         plot_autoencoding_imageBIS(net, train[:1], "train") #
@@ -473,8 +435,6 @@ def run(path,transitions,extra=None):
         _add_misc_info(parameters)
 
         if(args.hash != ""):
-            print("args.hash")
-            print(args.hash)
             parameters["hash"] = args.hash
 
         net, error = task(parameters)

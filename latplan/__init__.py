@@ -14,10 +14,10 @@ np.set_printoptions(formatter={'float_kind':lambda x: "%.5f" % x})
 
 # https://stackoverflow.com/questions/48979426/keras-model-accuracy-differs-after-loading-the-same-saved-model
 from numpy.random import seed
-seed(42) # keras seed fixing
+#seed(42) # keras seed fixing
 
 import tensorflow as tf
-tf.compat.v1.set_random_seed(42)
+#tf.compat.v1.set_random_seed(42)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 import keras.backend.tensorflow_backend as K
