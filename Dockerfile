@@ -1,5 +1,7 @@
 # before building the image: 1) download the 2 tars in the current dir 2) make sure the .yml is the good one
 
+# ONCE image built: from PowerShell: docker run -it -d -v "$(pwd):/home/latplan" latplan-image
+
 FROM continuumio/conda-ci-linux-64-python3.7
 
 COPY . /home/latplan
