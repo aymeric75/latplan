@@ -106,6 +106,8 @@ def main(domainfile, problem_dir, heuristics, cycle, sigma):
         os.path.exists(ig) or np.savetxt(ig,[bits],"%d")
         echodo(["helper/ama3-problem.sh",ig,problemfile])
         log(f"finished generating problem")
+
+        exit()
     
         ###### do planning #############################################
         log(f"start planning")

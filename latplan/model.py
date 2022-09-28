@@ -25,13 +25,11 @@ from .mixins.latent          import *
 from .mixins.encoder_decoder import *
 from .mixins.locality        import *
 from .mixins.output          import *
-from .network                import Network
+from .network import Network
 
-# Style guide
-# * Each section is divided by 3 newlines
-# * Each class is separated by 2 newline (so that hideshow will separate them by 1 newline when folded)
+print("hello")
 
-# utilities ####################################################################
+
 
 def get(name):
     return globals()[name]
@@ -147,11 +145,7 @@ The latter two are used for verifying the performance of the AE.
 
         data = np.expand_dims(data, axis=0)
 
-        print('data from returnloss')
-        print(type(data))
-        print(data.shape)
-
-
+       
         y_true = data
 
         #return self.autoencoder.predict(data, steps=10, **kwargs)
@@ -500,6 +494,223 @@ Note: references to self.parameters[key] are all hyperparameters."""
 
 
 
+
+
+
+# State Auto Encoder Softmax ###########################################################
+
+# AAAI18 paper
+class StateAESoftmax(SoftmaxLatentMixin, EarlyStopMixin, FullConnectedMixin, AE):
+    """An AE whose latent layer is BinaryConcrete.
+Fully connected layers only, no convolutions.
+Note: references to self.parameters[key] are all hyperparameters."""
+    def _build_primary(self,input_shape):
+        self.loss = self.output.loss
+
+        x = Input(shape=input_shape, name="autoencoder")
+        z = self._encode(x)
+        y = self._decode(z)
+
+        print("CONSTRUCTIING AUTOENCODER")
+
+        self.encoder     = Model(x, z)
+        self.autoencoder = Model(x, y)
+        self.net = self.autoencoder
+
+    def _build_aux_primary(self,input_shape):
+        # to be called after the training
+        z2 = Input(shape=self.zdim(), name="autodecoder")
+        y2 = self._decode(z2)
+        w2 = self._encode(y2)
+        self.decoder     = Model(z2, y2)
+        self.autodecoder = Model(z2, w2)
+
+    def render(self,x):
+        return self.output.render(x)
+
+    def plot(self,x,path,verbose=False,epoch=None):
+        self.load()
+        z = self.encode(x)
+        y = self.autoencode(x)
+
+        xg = gaussian(x)
+
+        yg = self.autoencode(xg)
+
+        x = self.render(x)
+        y = self.render(y)
+        xg = self.render(xg)
+        yg = self.render(yg)
+
+        dy  = ( y-x+1)/2
+        dyg = (yg-x+1)/2
+
+        _z = squarify(z)
+
+        self._plot(path, (x, _z, y, dy, xg, yg, dyg),epoch=epoch)
+        return x,z,y
+
+    def plot_cycle(self,x1,path,cycles=3,verbose=False,epoch=None):
+        self.load()
+        B, *_ = x1.shape
+
+        def diff(src,dst):
+            return (dst - src + 1)/2
+
+        rx1 = self.render(x1)
+        rz1 = squarify(self.encode(x1).reshape((B,-1)))
+        print("rx1.min()",rx1.min(),"rx1.max()",rx1.max())
+        print("rz1.min()",rz1.min(),"rz1.max()",rz1.max())
+
+        results_x = [rx1]
+        results_z = [rz1]
+        results_dx = []
+        results_dz = []
+
+        for i in range(cycles):
+            x2  = self.autoencode(x1)
+            rx2 = self.render(x2)
+            rz2 = squarify(self.encode(x2).reshape((B,-1)))
+            print("rx2.min()",rx2.min(),"rx2.max()",rx2.max())
+            print("rz2.min()",rz2.min(),"rz2.max()",rz2.max())
+            results_x.append(rx2)
+            results_z.append(rz2)
+            results_dx.append(diff(rx1,rx2))
+            results_dz.append(diff(rz1,rz2))
+            x1 = x2
+            rx1 = rx2
+            rz1 = rz2
+
+        import os.path
+        name, ext = os.path.splitext(path)
+        self._plot(name+"_x"+ext, results_x, epoch=epoch)
+        self._plot(name+"_z"+ext, results_z, epoch=epoch)
+        self._plot(name+"_dx"+ext, results_dx, epoch=epoch)
+        self._plot(name+"_dz"+ext, results_dz, epoch=epoch)
+        return
+
+    def plot_plan(self,z,path,verbose=False):
+        "Plot a sequence of states horizontally."
+        self.load()
+        y = self.decode(z)
+        y = self.render(y)
+        y = [ r for r in y ]
+        plot_grid(y, w=8, path=path, verbose=True)
+        return
+
+
+    def dump_actions(self,*args,**kwargs):
+        print("dump_actions 1")
+        """Is here so that SAE and TAE has the consistent interface"""
+        pass
+
+
+    def _report(self,test_both,**opts):
+
+        from .util.np_distances import mse, mae
+
+        def metrics(data):
+            return { k:v for k,v in zip(self.net.metrics_names,
+                                        ensure_list(self.net.evaluate(data, data, **opts)))}
+
+        test_both(["metrics"], metrics)
+
+        # evaluate the current state reconstruction loss.
+        # This is using self.autoencoder rather than self.net, therefore the second reconstruction is through the SAE, not AAE
+        test_both(["sae","mse","vanilla"],  lambda data: mse(data, self.autoencoder.predict(data,          **opts)))
+        test_both(["sae","mse","gaussian"], lambda data: mse(data, self.autoencoder.predict(gaussian(data),**opts)))
+
+        test_both(["sae","activation"], lambda data: float(self.encode(data,**opts).mean()))
+
+        # UGLY! The following functions are added because this code path should handle both the single-state case
+        # and the double-state (transition) case.
+        def batch_amax_mod(z):
+            # this is latent space vectors, so it is either [batch,2,N] or [batch,N]
+            if z.ndim == 2:
+                return np.amax(z,axis=0)
+            # the input is a latent transition (z0, z1)
+            if z.ndim == 3:
+                return np.amax(z,axis=(0,1))
+            assert False
+        def batch_amin_mod(z):
+            # this is latent space vectors, so it is either [batch,2,N] or [batch,N]
+            if z.ndim == 2:
+                return np.amin(z,axis=0)
+            # the input is a latent transition (z0, z1)
+            if z.ndim == 3:
+                return np.amin(z,axis=(0,1))
+            assert False
+
+        test_both(["sae","ever_1"],     lambda data: float(np.sum(batch_amax_mod(self.encode(data,**opts)))))
+        test_both(["sae","ever_0"],     lambda data: float(np.sum(1-batch_amin_mod(self.encode(data,**opts)))))
+        test_both(["sae","effective"],  lambda data: float(np.sum((1-batch_amin_mod(self.encode(data,**opts)))*batch_amax_mod(self.encode(data,**opts)))))
+
+        def latent_variance_noise(data,noise):
+            encoded = [self.encode(noise(data),**opts).round() for i in range(10)]
+            var = np.var(encoded,axis=0)
+            return {
+                "max":float(np.amax(var)),
+                "min":float(np.amin(var)),
+                "mean":float(np.mean(var)),
+                "median":float(np.median(var)),
+            }
+
+        test_both(["sae","variance","gaussian"], lambda data: latent_variance_noise(data,gaussian))
+
+        def cycle_consistency(data):
+            x0 = data
+            z0 = self.encoder.predict(x0,**opts)
+            x1 = x0
+            z1 = z0
+            xs01 = []            # does x move away from the initial x?
+            xs12 = []            # does x converge?
+            zs01 = []            # does z move away from the initial z?
+            zs12 = []            # does z converge?
+            for i in range(10):
+                xs01.append(mse(x0,x1))
+                zs01.append(mae(z0,z1))
+                x2 = self.decoder.predict(z1,**opts)
+                z2 = self.encoder.predict(x2,**opts)
+                xs12.append(mse(x1,x2))
+                zs12.append(mae(z1,z2))
+                z1 = z2
+                x1 = x2
+
+            # noisy input
+            x3 = gaussian(x0)
+            z3 = self.encoder.predict(x3,**opts)
+            xs13 = []           # does x with noise converge to the same value (x1)?
+            xs34 = []           # does x converge?
+            zs13 = []
+            zs34 = []
+            for i in range(10):
+                xs13.append(mse(x1,x3))
+                zs13.append(mae(z1,z3))
+                x4 = self.decoder.predict(z3,**opts)
+                z4 = self.encoder.predict(x4,**opts)
+                xs34.append(mse(x3,x4))
+                zs34.append(mae(z3,z4))
+                z3 = z4
+                x3 = x4
+
+            return {"xs01":xs01,
+                    "xs12":xs12,
+                    "xs13":xs13,
+                    "xs34":xs34,
+                    "zs01":zs01,
+                    "zs12":zs12,
+                    "zs13":zs13,
+                    "zs34":zs34}
+
+        test_both(["cycle_consistency"], cycle_consistency)
+
+        return
+
+
+
+
+
+
 # Transition Auto Encoder ######################################################
 
 # Warning!!! Action and effect mapping mixins are used before TransitionWrapper in the precedence list.
@@ -626,11 +837,6 @@ It contans only as many rows as the available actions. Unused actions are remove
         array_index_action_for_each_trans = np.where(actions > 0)[2]
 
 
-        #print(array_index_action_for_each_trans)
-
-        print("SHAPE SUC")
-        print(suc.shape)
-
         #self.save_array("pre.csv", pre)
         self.save_array("suc.csv", suc)
 
@@ -674,6 +880,24 @@ It contans only as many rows as the available actions. Unused actions are remove
         self.dump_effects      (pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
         self.dump_preconditions(pre, suc, data, actions, histogram, true_num_actions, all_labels, action_ids, **kwargs)
     pass
+
+
+    def dump_cat_transitions(self,transitions,**kwargs):
+        print("dump_cat_transitions SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
+
+        print(transitions.shape)
+
+        transitions_z = self.encode(transitions,**kwargs)
+        pre = transitions_z[:,0,...]
+        suc = transitions_z[:,1,...]
+
+
+        self.save_array("pre_cat_transitions.csv", pre)
+        self.save_array("suc_cat_transitions.csv", pre)
+
+
+        return
+
 
 
 
@@ -879,6 +1103,8 @@ It overwrites dump_actions because effects/preconditions must be learned separat
         self.save_array("actions_both+ids.csv", np.concatenate([data_byid,data_aae_byid], axis=0))
 
         return
+
+
 
 
 
@@ -1183,11 +1409,15 @@ class UnidirectionalMixin(AddHocPreconditionMixin, EffectMixin):
 class BidirectionalMixin(PreconditionMixin, EffectMixin):
 
     def plot_transitions(self,data,path,verbose=False,epoch=None):
-        print("plot_transitions 2")
+        print("plot_transitions 2 00")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext
         suc_path = basename+"_suc"+ext
+
+        print("paaaath ")
+
+        print(path)
 
         x = data
 
@@ -1215,7 +1445,7 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
         y_pre_r,     y_suc_r     = self.render(y_pre),     self.render(y_suc)
         y_pre_aae_r, y_suc_aae_r = self.render(y_pre_aae), self.render(y_suc_aae)
 
-        print("plot_transitions 22")
+        print("plot_transitions 2 11")
 
         self._plot(basename+"_transition_image"+ext,
                    [x_pre_r, x_suc_r,                           # image0 image1
@@ -1268,65 +1498,43 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
     def latplan_encoder(self, data):
         return self.encode(data)
 
-    def plot_transitionsBis(self, data, path, verbose=False, epoch=None):
-        print("plot_transitionsBisplot_transitionsBis")
+    def plot_transitionsShort(self, data, path, verbose=False, epoch=None):
+
+        print("in plot_transitionsShort")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext
         suc_path = basename+"_suc"+ext
         x = data
+        print("pre_path")
+        print(pre_path)
 
-        #print("X SHAPE") # (6, 2, 48, 48, 1)
-  
-        # 6 transitions, 2 images par transition, image de 48x48
+        print(x.shape)
 
-        z = self.encode(x) # encoder 
-        y = self.autoencode(x) # 
-
+        z = self.encode(x)   # donne le vector categorique ?
+        y = self.autoencode(x) # donne l'image
 
         x_pre, x_suc = x[:,0,...], x[:,1,...]
         z_pre, z_suc = z[:,0,...], z[:,1,...]
         y_pre, y_suc = y[:,0,...], y[:,1,...]
         action    = self.encode_action([z_pre,z_suc])
-        z_pre_aae = self.regress([z_suc, action]) # representation of img_pre (calc by Regression of z_suc and action)
+        z_pre_aae = self.regress([z_suc, action])
         y_pre_aae = self.decode(z_pre_aae)
-        z_suc_aae = self.apply([z_pre, action]) # representation of img_succ (calc from Applying action to z_pre)
+        z_suc_aae = self.apply([z_pre, action])
         y_suc_aae = self.decode(z_suc_aae)
-
-
-        print("action")
-        print(action.shape)
-        print("z_pre_aae")
-        print(z_pre_aae.shape)
-        print("z_suc_aae")
-        print(z_suc_aae.shape)
-
 
         def diff(src,dst):
             return (dst - src + 1)/2
 
-        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc)
+        x_pre_r,     x_suc_r     = self.render(x_pre),     self.render(x_suc) # images transition
         y_pre_r,     y_suc_r     = self.render(y_pre),     self.render(y_suc)
         y_pre_aae_r, y_suc_aae_r = self.render(y_pre_aae), self.render(y_suc_aae)
 
-        print("plot_transitions 22")
-
         self._plot(basename+"_transition_image"+ext,
-                   [x_pre_r, x_suc_r, # original images
-                    y_pre_r, y_suc_r, # predicted images from SAE
-                    y_pre_aae_r, y_suc_aae_r,],epoch=epoch) # predicted Images from Encoder + Action + Decoder
-                                    
-
-        self._plot(basename+"_transition_action"+ext,
-                   [action,],epoch=epoch)
-
-                                                            
-        self._plot(basename+"_transition_latent"+ext,
-                   map(squarify,                    # Where action is guessed by the two encoded transition images
-                       [z_pre,     z_suc, # Cat states (given by the encoder)
-                        z_pre_aae, z_suc_aae,]),epoch=epoch) # cat states given by:
-                                                                # Regress(z_suc, action) (z_pre_aae) , Apply(z_pre, action) (z_suc_aae)
-
+                   [x_pre_r, x_suc_r,                           # image0 image1
+                    y_pre_r, y_suc_r,                           # image0 image1 passées par l'autoencoder (y = self.autoencode)
+                    y_pre_aae_r, y_suc_aae_r,],epoch=None)     # image0 image1 passées par encode+action Puis decode
+                                                                #               avec l'action trouvée à partir des deux representations z
         return
 
 
@@ -1343,13 +1551,9 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
 
 
         # check if xi=xj (0 or 1)   
-
         # notxi v notxj   <=> not (xi and xj)  (true value (1) matters )
-
         # write in a file all (the actions and) their prec / effects
-
         # other file with cat vectors of images
-
         # and a full transition with cat vectors + prec + effects
 
         if(formula == "xi -> xj"):
@@ -1374,12 +1578,21 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
 
 
 
+    # index: index of the variable (in the data vector M)
     def Truth_unique(self, M, index):
 
+        print("in Truth_unique")
+        print(M.shape)
+        print(M[:, index].shape)
+
+
+        # mask size = #images (in M), true when at "index" = 1
         mask = (M[:, index] == 1.)
 
-
+        # 
         M_sub = M[mask, :]
+
+        print(M_sub.shape)
 
 
         if(M.shape[0] == 0):
@@ -1393,7 +1606,7 @@ class BidirectionalMixin(PreconditionMixin, EffectMixin):
 
 
     def testCat_vars(self,data,path,verbose=False,epoch=None):
-        print("plot_transitions 2")
+        print("plot_transitions 2 44")
         import os.path
         basename, ext = os.path.splitext(path)
         pre_path = basename+"_pre"+ext
@@ -1643,8 +1856,12 @@ class BaseActionMixinAMA3Plus(UnidirectionalMixin, BaseActionMixin):
 
         x = Input(shape=(2,*input_shape))
         _, x_pre, x_suc = dapply(x)
-        z, z_pre, z_suc = dapply(x, self._encode)
-        y, y_pre, y_suc = dapply(z, self._decode)
+        #z, z_pre, z_suc = dapply(x, self._encode)
+
+        apply_output = dapply(x, self._encode)
+        z, z_pre, z_suc = apply_output
+
+        y, y_pre, y_suc = dapply(z, self._decode) # 
 
         # to generate a correct ELBO, input to action should be deterministic
         (l_pre,     ), _ = z_pre.variational_source # see Variational class
@@ -1697,7 +1914,7 @@ class BaseActionMixinAMA3Plus(UnidirectionalMixin, BaseActionMixin):
             return total_loss
         self.loss = loss
         # note: original z does not work because Model.save only saves the weights that are included in the computation graph between input and output.
-        self.net = Model(x, y_aae)
+        self.net = Model(x, [y_aae, apply_output])  
         self.encoder     = Model(x, z) # note : directly through the encoder, not AAE
         self.autoencoder = Model(x, y) # note : directly through the decoder, not AAE
 
@@ -1718,6 +1935,21 @@ class BaseActionMixinAMA3Plus(UnidirectionalMixin, BaseActionMixin):
 
     pass
 
+
+
+def dapply(x,fn=None):
+    """Take a batch of pairs of elements (e.g. shape : [B,2,D,E,F]), apply fn to each half
+([B,D,E,F]), then concatenate the result into pairs ([B,2,result_shape])."""
+    x1 = wrap(x,x[:,0,...])
+    x2 = wrap(x,x[:,1,...])
+    if fn is not None:
+        y1 = fn(x1)
+        y2 = fn(x2)
+    else:
+        y1 = x1
+        y2 = x2
+    y = dmerge(y1, y2)
+    return y, y1, y2
 
 
 # AMA4+ Space AE : Bidirectional model with correct ELBO #######################
@@ -1769,7 +2001,11 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         print(x)
 
         _, x_pre, x_suc = dapply(x)
-        z, z_pre, z_suc = dapply(x, self._encode)
+        apply_outputs = dapply(x, self._encode)
+
+        z, z_pre, z_suc = apply_outputs
+
+
         y, y_pre, y_suc = dapply(z, self._decode)
         # to generate a correct ELBO, input to action should be deterministic
         (l_pre,     ), _ = z_pre.variational_source # see Variational class
@@ -1790,35 +2026,37 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         #    MASKS   #
         ##############
 
-        # EFFECTS (add / del)
+        # ### EFFECTS (add / del)
         add_effect = self._apply(z_pre_zeros, action) # Tensor("binary_concrete_3/concrete_3/cond/Merge:0", shape=(?, 300), dtype=float32)
         del_effect = 1 - self._apply(z_pre_zeros, action)
    
 
-        # PRECONDITIONS (pos / neg)
-        pos_precondition = self._regress(z_suc_zeros,action)
-        neg_precondition = 1 - self._regress(z_suc_zeros,action)
+        ### PRECONDITIONS (pos / neg)
+        # pos_precondition = self._regress(z_suc_zeros,action)
+        # neg_precondition = 1 - self._regress(z_suc_zeros,action)
 
 
+        ## tensor of of 0s with shape of v0, over the batch
+        #batch_zeros = tf.zeros_like(add_effect[:, 0])
 
-        batch_zeros = tf.zeros_like(add_effect[:, 0])
-        #batch_ones = tf.ones_like(add_effect[:, 0])
+        # tensor of truthness of  (x0 vs 0)
+        #boolean_mask = tf.math.equal(add_effect[:, 0], batch_zeros)
 
-        boolean_mask = tf.math.equal(add_effect[:, 0], batch_zeros)
-
-
-        # Additional loss conditioned on masks (here, conditioned on the  1st bit of the ADD/EFFECT mask : has to be one !)
-        supple_loss = tf.where(boolean_mask, tf.repeat([997.], repeats=tf.shape(boolean_mask)[0]), tf.repeat([0.], repeats=tf.shape(boolean_mask)[0]))
-
-        #print("supple_loss eval")
-
-        self.tensor = supple_loss
-        #tfs = tf.InteractiveSession()
+        ##### Additional loss conditioned on masks (here, conditioned on the  1st bit of the ADD/EFFECT mask : has to be one !)
+        # OLD supple_loss
+        #supple_loss = tf.where(boolean_mask, tf.repeat([8499999999.], repeats=tf.shape(boolean_mask)[0]), tf.repeat([0.], repeats=tf.shape(boolean_mask)[0]))
 
 
+        #tf.reduce_mean(add_effect[:, 0]) # moyenne de la valeur de la variable v0 (over a batch)
 
-        # 1000000 (1e6)
-        # 999999
+        # New Supple_loss
+        #supple_loss = (1. - tf.reduce_mean(add_effect[:, 0])) * 100000 # <=> ordre grandeur des autres losses (e.g. forward_loss1)
+
+        # 0.9820
+
+        ### 
+
+
 
         z_pre_aae = self._regress(z_suc,action)
         y_suc_aae = self._decode(z_suc_aae)
@@ -1866,6 +2104,12 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         backward_elbo1 = kl_z1 + x1y1 + kl_a_z1 + kl_z0z3 + x0y0
         backward_elbo2 = kl_z1 + x1y1 + kl_a_z1 + x0y3
         elbo = (forward_elbo1 + forward_elbo2 + backward_elbo1 + backward_elbo2)/4
+
+        self.add_metric("forward_loss1",forward_loss1)
+        self.add_metric("forward_loss2",forward_loss2)
+        self.add_metric("backward_loss1",backward_loss1)
+        self.add_metric("backward_loss2",backward_loss2)
+        
         self.add_metric("pdiff_z1z2",pdiff_z1z2)
         self.add_metric("pdiff_z0z3",pdiff_z0z3)
         self.add_metric("pdiff_z0z1",pdiff_z0z1)
@@ -1883,14 +2127,17 @@ class BaseActionMixinAMA4Plus(BidirectionalMixin, BaseActionMixin):
         self.add_metric("elbo",elbo)
 
         self.add_metric("total_loss",total_loss)
-        self.add_metric("supple_loss",supple_loss)
+        #self.add_metric("supple_loss",supple_loss)
 
         def loss(*args):
             return total_loss
         self.loss = loss
 
         # note: original z does not work because Model.save only saves the weights that are included in the computation graph between input and output.
-        self.net = Model(x, y_aae)
+        #self.net = Model(x, outputs=[y_aae, z])
+
+
+        self.net = Model(x, outputs=y_aae)
         self.encoder     = Model(x, z) # note : directly through the encoder, not AAE
         self.autoencoder = Model(x, y) # note : directly through the decoder, not AAE
 
@@ -2005,9 +2252,22 @@ class ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus(DetActionMixin,
     """Bidirectional Cube-Space AE implementation in JAIR"""
     pass
 
+
+# AMA4 plus : Correction of AMA4 that optimizes the network using correct ELBO. WITH SOFTMAX
+class ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlusSoftmax(DetActionMixin, NormalizedLogitAddBidirectionalMixin, BaseActionMixinAMA4Plus, TransitionWrapper, StateAESoftmax):
+    """Bidirectional Cube-Space AE implementation in JAIR"""
+    pass
+
+
 class ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus(StridedConvolutionalMixin,ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus):
+    pass
+
+
+class ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlusSoftmax(StridedConvolutionalMixin,ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlusSoftmax):
     pass
 
 CubeSpaceAE_AMA4Plus = ConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus
 CubeSpaceAE_AMA4Conv = ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlus
 
+
+CubeSpaceAE_AMA4Conv_Softmax = ConvolutionalConcreteDetNormalizedLogitAddBidirectionalTransitionAEPlusSoftmax

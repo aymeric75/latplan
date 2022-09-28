@@ -28,3 +28,6 @@ RUN ["/bin/bash", "-c", "( cd latplan/puzzles/ ; sudo tar xf ../../datasets.tar 
 
 
 RUN ["/bin/bash", "-c", "( cd problem-generators/ ; sudo tar xf ../backup-propositional.tar.bz2 )"]
+
+
+CMD ["."," /opt/conda/etc/profile.d/conda.sh"]

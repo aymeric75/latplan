@@ -1,0 +1,29 @@
+import json
+import numpy as np
+import tensorflow as tf
+from keras.layers import *
+import keras.optimizers
+from keras import objectives
+import keras.callbacks
+from keras.callbacks import Callback, CallbackList
+from .util           import ensure_list, NpEncoder, curry
+from .util.tuning    import InvalidHyperparameterError
+from .util.layers    import LinearSchedule
+import os.path
+import time
+import sys
+
+
+# modified version
+import progressbar
+class DynamicMessage(progressbar.DynamicMessage):
+    def __call__(self, progress, data):
+        val = data['dynamic_messages'][self.name]
+        if val:
+            return '{}'.format(val)
+        else:
+            return 6 * '-'
+
+
+class Network:
+    pass

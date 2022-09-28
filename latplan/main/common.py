@@ -108,6 +108,12 @@ def add_common_arguments(subparser,task,objs=False):
     return
 
 
+def plot_image(a,name):
+    plt.figure(figsize=(6,6))
+    plt.imshow(a,interpolation='nearest',cmap='gray',)
+    plt.savefig(name)
+
+
 
 def main(parameters={}):
     import latplan.util.tuning
@@ -127,6 +133,10 @@ def main(parameters={}):
         sae_path = "_".join(sys.argv[2:])
 
 
+    print("argssssss")
+    print(args)
+
+
     try:
         task(args)
     except:
@@ -137,8 +147,8 @@ def main(parameters={}):
 # procedures for each mode
 
 def plot_autoencoding_image(ae,transitions,label):
-    if 'plot' not in args.mode:
-        return
+    # if 'plot' not in args.mode:
+    #     return
 
     if hasattr(ae, "plot_transitions"):
         transitions = transitions[:6]
@@ -155,9 +165,13 @@ def plot_autoencoding_image(ae,transitions,label):
 
 def plot_autoencoding_imageBIS(ae,transitions,label): # Aymeric [16/06/2022]
 
+    print("transitions  ")
+    print(transitions[0])
 
-    ae.plot_transitionsBis(transitions, ae.local(f"transitions_{label}"),verbose=True)
-  
+    ims = np.expand_dims(transitions[0], axis=0)
+
+    plot_image(np.squeeze(ae.autoencoder.predict(ims))[0], "imagg")
+
     return
 
 
@@ -200,6 +214,12 @@ def dump_actions(ae,transitions,name = "actions.csv",repeat=1):
         return
     print(ae.local(name))
     ae.dump_actions(transitions,batch_size = 1000)
+
+
+
+def dump_cat_transition(ae,transitions):
+
+    ae.dump_cat_transitions(transitions)
 
 
 def dump_actionsBIS(ae,transitions,name = "actions.csv",repeat=1):
@@ -300,148 +320,89 @@ def run(path,transitions,extra=None):
         return
 
 
-    if 'learn' in args.mode:
 
+    parameters['batch_size'] = 400
+    parameters['N'] = 300
+    parameters['beta_d'] = 10
+    parameters['beta_z'] = 10
+    parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
+    parameters['aae_activation'] = 'relu' # see 9.2
+    parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
+    parameters['max_temperature'] = 5.0
+    parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
+    parameters['conv_pooling'] = 1 # = train_common.py
+    parameters['conv_kernel'] = 5 # = train_common.py
+    parameters['conv_per_pooling']  = 1
+    parameters['conv_channel']  = 32
+    parameters['conv_channel_increment'] = 1
+    parameters['eff_regularizer'] = None
+    parameters['A'] = 6000 # max # of actions
+    #parameters["batch_size"] = 20
 
-
-        parameters['batch_size'] = 400
-        parameters['N'] = 300
-        parameters['beta_d'] = 10
-        parameters['beta_z'] = 10
-        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
-        parameters['aae_activation'] = 'relu' # see 9.2
-
-        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
-
-        parameters['max_temperature'] = 5.0
-
-        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
-
-        parameters['conv_pooling'] = 1 # = train_common.py
-
-        parameters['conv_kernel'] = 5 # = train_common.py
-
-        parameters['conv_per_pooling']  = 1
-
-        parameters['conv_channel']  = 32
-        parameters['conv_channel_increment'] = 1
-
-        parameters['eff_regularizer'] = None
-
-        parameters['A'] = 6000 # max # of actions
-
-        parameters["batch_size"] = 1
-
-        # nn_task(network, path, train_in, train_out, val_in, val_out, parameters, resume=False) single iteration of NN training
-
+    _add_misc_info(parameters)
+    if(args.hash != ""):
+        parameters["hash"] = args.hash
+ 
+    if 'return_new_dataset' in args.mode:
         
+        # returns subarray of "train" <=> "mask"
+      
+        complete_path = path+"/logs/"+parameters["hash"]+"/pre_cat_transitions.csv"
+        f = open(complete_path, "r")
+        indices = []
+        new_dataset = []
+        i=0
+        for l in f.readlines():
+            res = np.array(l.split())
+            if(res.astype(int)[0] == 1):
+                indices.append(i)
+                new_dataset.append(train[i])
+            i+=1
+        f.close()
+        new_dataset = np.array(new_dataset)
+        exit()
 
-        task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val, parameters)
 
-        _add_misc_info(parameters)
 
+    if 'learn' in args.mode:
+        task = curry(nn_task, latplan.model.get(parameters["aeclass"]), path, train, train, val, val, parameters)       
         task(parameters)
-
-
         exit()
         
 
 
     if 'testing' in args.mode: # aymeric [13/06/2022]
-
-        parameters['batch_size'] = 400
-        parameters['N'] = 300
-        parameters['beta_d'] = 10
-        parameters['beta_z'] = 10
-        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
-        parameters['aae_activation'] = 'relu' # see 9.2
-
-        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
-
-        parameters['max_temperature'] = 5.0
-
-        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
-
-        parameters['conv_pooling'] = 1 # = train_common.py
-
-        parameters['conv_kernel'] = 5 # = train_common.py
-
-        parameters['conv_per_pooling']  = 1
-
-        parameters['conv_channel']  = 32
-        parameters['conv_channel_increment'] = 1
-
-        parameters['eff_regularizer'] = None
-
-        parameters['A'] = 6000 # max # of actions
-
-
-        parameters["optimizer"] = "radam"
-
-
-
-        # loadsNetWithWeights (renvoie net, error) dans tunning.py
-        # qui appel loadsModelAndWeights de network.py
         task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
-
-        _add_misc_info(parameters)
-
-
-        # CHOIX DU NETWORK
-        parameters['hash'] = "8dd53f4ca49f65444250447a16903f86"
-
-
         net, error = task(parameters)
-
-        exit()
-
-
-        #Plot la 1ere transition de train (train[:1]) les plots sont dans samples/puzzle.../logs/8dd.....
-        plot_autoencoding_imageBIS(net, train[:1], "train") #
-        #testCatVars(net, train, "train")
-
+        plot_autoencoding_imageBIS(net, train, "plotting transition images")
         exit()
 
 
     if 'dump_actions' in args.mode: # Aymeric [28-06-22]
-
-
-        # dump_actions 3 dans model.py
-
-        # puis _dump_actions_prologue dans model.py
-
-        # puis dump_preconditions 2
-
-        # puis save_array dans network.py
-
-        parameters['batch_size'] = 400
-        parameters['N'] = 300
-        parameters['beta_d'] = 10
-        parameters['beta_z'] = 10
-        parameters['aae_depth'] = 2 # see Tble 9.1, PAS SUR DE LA SIGNIFICATION là !!!
-        parameters['aae_activation'] = 'relu' # see 9.2
-        parameters['aae_width'] = 1000 # not sure, see 9.1 fc(1000) and fc(6000)
-        parameters['max_temperature'] = 5.0
-        parameters['conv_depth'] = 3 # dans 9.1, encode ET decode ont chacun 3 Conv
-        parameters['conv_pooling'] = 1 # = train_common.py
-        parameters['conv_kernel'] = 5 # = train_common.py
-        parameters['conv_per_pooling']  = 1
-        parameters['conv_channel']  = 32
-        parameters['conv_channel_increment'] = 1
-        parameters['eff_regularizer'] = None
-        parameters['A'] = 6000 # max # of actions
-        parameters["optimizer"] = "radam"
         task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
-        _add_misc_info(parameters)
-
-        if(args.hash != ""):
-            parameters["hash"] = args.hash
-
         net, error = task(parameters)
-
         dump_actionsBIS(net,transitions)
-
         exit()
+
+    if 'dump_cat_transition' in args.mode:
+        task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+        net, error = task(parameters)
+        dump_cat_transition(net, train)
+        exit()
+
+    if 'evaluate' in args.mode:
+
+        task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val, parameters)
+        net, error = task(parameters)
+        show_summary(net, train, test)
+        exit()
+
+    if 'plot_transition_images' in args.mode:
+        task = curry(loadsNetWithWeights, latplan.model.get(parameters["aeclass"]), path, train, train, val, val)
+        net, error = task(parameters)
+        label = "thelabel"
+        transitions = train[:6]
+        net.plot_transitions(transitions, net.local(f"transitions_{label}"),verbose=True)
 
     if 'resume' in args.mode:
         simple_genetic_search(
@@ -453,6 +414,8 @@ def run(path,transitions,extra=None):
             population         = 100,
             report             = report,
         )
+
+
 
     if 'debug' in args.mode:
         print("debug run. removing past logs...")
@@ -497,8 +460,8 @@ def run(path,transitions,extra=None):
 
 
 def show_summary(ae,train,test):
-    if 'summary' in args.mode:
-        ae.summary()
-        ae.report(train, test_data = test, train_data_to=train, test_data_to=test)
+    #if 'summary' in args.mode:
+    #ae.summary()
+    ae.report(train, test_data = test, train_data_to=train, test_data_to=test)
 
 

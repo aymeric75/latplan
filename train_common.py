@@ -58,8 +58,8 @@ parameters = {
     'aae_depth'      :[2],
 
     'eff_regularizer':[None],
-    'beta_d'         :[ 1 ],
-    'beta_z'         :[ 1 ],
+    'beta_d'         :[ 1 ], # == Beta3
+    'beta_z'         :[ 1 ], # == Beta1
 
     "output"          :"GaussianOutput(sigma=0.1)",
 }
